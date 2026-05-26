@@ -1,0 +1,165 @@
+function resetScript() {
+  PropertiesService.getScriptProperties().deleteProperty("F1_ID");
+  Browser.msgBox("Reseteado. Ya podes ejecutar step1_crearForm.");
+}
+function step1_crearForm() {
+  var props = PropertiesService.getScriptProperties();
+  var ALL_TEAMS = ["Alemania","Arabia Saudita","Argelia","Argentina","Australia","Austria","Bélgica","Bosnia y Herzegovina","Brasil","Cabo Verde","Canadá","Colombia","Corea del Sur","Costa de Marfil","Croacia","Curazao","Ecuador","EE.UU.","Egipto","Escocia","España","Francia","Ghana","Haití","Inglaterra","Irak","Irán","Japón","Jordania","Marruecos","México","Noruega","Nueva Zelanda","Países Bajos","Panamá","Paraguay","Portugal","Qatar","RD Congo","Rep. Checa","Senegal","Sudáfrica","Suecia","Suiza","Túnez","Turquía","Uruguay","Uzbekistán"];
+  var DECEPCION = ["Alemania","Argentina","Bélgica","Brasil","Colombia","Croacia","EE.UU.","España","Francia","Inglaterra","México","Países Bajos","Portugal","Suiza","Uruguay"];
+  var REVELACION = ["Arabia Saudita","Australia","Cabo Verde","Curazao","Ghana","Haití","Irak","Irán","Jordania","Nueva Zelanda","Panamá","Qatar","RD Congo","Sudáfrica","Túnez","Uzbekistán"];
+
+  var form = FormApp.create("Prode Mundial 2026 — Fase de Grupos");
+  form.setDescription("Completa ANTES del 11 de junio.\nResultado exacto=5pts | Ganador/empate=2pts | Incorrecto=0pts\nFormato partidos: LOCAL-VISITANTE (ej: 2-1)");
+  form.setCollectEmail(false);
+  form.setLimitOneResponsePerUser(false);
+  form.setProgressBar(true);
+  form.setShuffleQuestions(false);
+
+  form.addTextItem().setTitle("Nombre y Apellido").setRequired(true);
+  form.addPageBreakItem().setTitle("PICKS ESPECIALES").setHelpText("Puntos extra independientes de los resultados.");
+  form.addListItem().setTitle("Campeon del Mundial (15 pts)").setChoiceValues(ALL_TEAMS).setRequired(true);
+  form.addListItem().setTitle("Subcampeon (10 pts)").setChoiceValues(ALL_TEAMS).setRequired(true);
+  form.addListItem().setTitle("Tercer Puesto (5 pts)").setChoiceValues(ALL_TEAMS).setRequired(true);
+  form.addTextItem().setTitle("Goleador del torneo (7 pts)").setHelpText("Nombre completo del jugador.").setRequired(true);
+  form.addListItem().setTitle("Decepcion — seleccion TOP que NO pasa grupos (7 pts)").setHelpText("Si hay mas de una, todos los que acertaron cualquiera suman 7 pts.").setChoiceValues(DECEPCION).setRequired(true);
+  form.addListItem().setTitle("Revelacion — seleccion UNDERDOG que SI pasa grupos (7 pts)").setHelpText("Si hay mas de una, vale la que llego mas lejos.").setChoiceValues(REVELACION).setRequired(true);
+
+  props.setProperty("F1_ID", form.getId());
+  Logger.log("PASO 1 OK — Form ID: " + form.getId());
+  Browser.msgBox("PASO 1 OK\\n\\nAhora ejecuta step2_gruposABC");
+}
+function step2_gruposABC() {
+  var form = FormApp.openById(PropertiesService.getScriptProperties().getProperty("F1_ID"));
+  _addGrupo(form, "A", ["México","Sudáfrica","Corea del Sur","Rep. Checa"], [
+    ["11/06 16:00", "México",        "Sudáfrica"],
+    ["11/06 23:00", "Corea del Sur", "Rep. Checa"],
+    ["18/06 13:00", "Rep. Checa",    "Sudáfrica"],
+    ["18/06 22:00", "México",        "Corea del Sur"],
+    ["24/06 22:00", "México",        "Rep. Checa"],
+    ["24/06 22:00", "Sudáfrica",     "Corea del Sur"]
+  ]);
+  _addGrupo(form, "B", ["Canadá","Bosnia y Herzegovina","Qatar","Suiza"], [
+    ["12/06 16:00", "Canadá",                "Bosnia y Herzegovina"],
+    ["13/06 16:00", "Qatar",                 "Suiza"],
+    ["18/06 16:00", "Suiza",                 "Bosnia y Herzegovina"],
+    ["18/06 19:00", "Canadá",               "Qatar"],
+    ["24/06 16:00", "Suiza",                 "Canadá"],
+    ["24/06 16:00", "Bosnia y Herzegovina", "Qatar"]
+  ]);
+  _addGrupo(form, "C", ["Brasil","Marruecos","Haití","Escocia"], [
+    ["13/06 19:00", "Brasil",    "Marruecos"],
+    ["13/06 22:00", "Haití",    "Escocia"],
+    ["19/06 19:00", "Escocia",   "Marruecos"],
+    ["19/06 21:30", "Brasil",    "Haití"],
+    ["24/06 19:00", "Brasil",    "Escocia"],
+    ["24/06 19:00", "Marruecos", "Haití"]
+  ]);
+  Browser.msgBox("PASO 2 OK — Ejecuta step3_gruposDEF");
+}
+
+function step3_gruposDEF() {
+  var form = FormApp.openById(PropertiesService.getScriptProperties().getProperty("F1_ID"));
+  _addGrupo(form, "D", ["EE.UU.","Paraguay","Australia","Turquía"], [
+    ["12/06 22:00", "EE.UU.",    "Paraguay"],
+    ["13/06 01:00", "Australia", "Turquía"],
+    ["19/06 16:00", "EE.UU.",    "Australia"],
+    ["19/06 23:00", "Turquía",   "Paraguay"],
+    ["25/06 23:00", "EE.UU.",    "Turquía"],
+    ["25/06 23:00", "Paraguay",  "Australia"]
+  ]);
+  _addGrupo(form, "E", ["Alemania","Curazao","Costa de Marfil","Ecuador"], [
+    ["14/06 14:00", "Alemania",        "Curazao"],
+    ["14/06 20:00", "Costa de Marfil", "Ecuador"],
+    ["20/06 17:00", "Alemania",        "Costa de Marfil"],
+    ["20/06 23:00", "Ecuador",         "Curazao"],
+    ["25/06 17:00", "Curazao",         "Costa de Marfil"],
+    ["25/06 17:00", "Ecuador",         "Alemania"]
+  ]);
+  _addGrupo(form, "F", ["Países Bajos","Japón","Suecia","Túnez"], [
+    ["14/06 17:00", "Países Bajos", "Japón"],
+    ["14/06 23:00", "Suecia",       "Túnez"],
+    ["20/06 01:00", "Túnez",        "Japón"],
+    ["20/06 14:00", "Países Bajos", "Suecia"],
+    ["25/06 20:00", "Japón",        "Suecia"],
+    ["25/06 20:00", "Túnez",        "Países Bajos"]
+  ]);
+  Browser.msgBox("PASO 3 OK — Ejecuta step4_gruposGHI");
+}
+
+function step4_gruposGHI() {
+  var form = FormApp.openById(PropertiesService.getScriptProperties().getProperty("F1_ID"));
+  _addGrupo(form, "G", ["Bélgica","Egipto","Irán","Nueva Zelanda"], [
+    ["15/06 16:00", "Bélgica",        "Egipto"],
+    ["15/06 22:00", "Irán",           "Nueva Zelanda"],
+    ["21/06 16:00", "Bélgica",        "Irán"],
+    ["21/06 22:00", "Nueva Zelanda",  "Egipto"],
+    ["26/06 00:00", "Egipto",         "Irán"],
+    ["26/06 00:00", "Nueva Zelanda",  "Bélgica"]
+  ]);
+  _addGrupo(form, "H", ["España","Cabo Verde","Arabia Saudita","Uruguay"], [
+    ["15/06 13:00", "España",         "Cabo Verde"],
+    ["15/06 19:00", "Arabia Saudita", "Uruguay"],
+    ["21/06 13:00", "España",         "Arabia Saudita"],
+    ["21/06 19:00", "Uruguay",        "Cabo Verde"],
+    ["26/06 21:00", "Cabo Verde",     "Arabia Saudita"],
+    ["26/06 21:00", "Uruguay",        "España"]
+  ]);
+  _addGrupo(form, "I", ["Francia","Senegal","Irak","Noruega"], [
+    ["16/06 16:00", "Francia",  "Senegal"],
+    ["16/06 19:00", "Irak",     "Noruega"],
+    ["22/06 18:00", "Francia",  "Irak"],
+    ["22/06 21:00", "Noruega",  "Senegal"],
+    ["26/06 16:00", "Noruega",  "Francia"],
+    ["26/06 16:00", "Senegal",  "Irak"]
+  ]);
+  Browser.msgBox("PASO 4 OK — Ejecuta step5_gruposJKL");
+}
+
+function step5_gruposJKL() {
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var form = FormApp.openById(PropertiesService.getScriptProperties().getProperty("F1_ID"));
+  _addGrupo(form, "J", ["Argentina","Argelia","Austria","Jordania"], [
+    ["16/06 22:00", "Argentina", "Argelia"],
+    ["17/06 01:00", "Austria",   "Jordania"],
+    ["22/06 14:00", "Argentina", "Austria"],
+    ["22/06 23:00", "Jordania",  "Argelia"],
+    ["27/06 23:00", "Argelia",   "Austria"],
+    ["27/06 23:00", "Jordania",  "Argentina"]
+  ]);
+  _addGrupo(form, "K", ["Portugal","RD Congo","Uzbekistán","Colombia"], [
+    ["17/06 14:00", "Portugal",   "RD Congo"],
+    ["17/06 23:00", "Uzbekistán", "Colombia"],
+    ["23/06 14:00", "Portugal",   "Uzbekistán"],
+    ["23/06 23:00", "Colombia",   "RD Congo"],
+    ["27/06 20:30", "Colombia",   "Portugal"],
+    ["27/06 20:30", "RD Congo",   "Uzbekistán"]
+  ]);
+  _addGrupo(form, "L", ["Inglaterra","Croacia","Ghana","Panamá"], [
+    ["17/06 17:00", "Inglaterra", "Croacia"],
+    ["17/06 20:00", "Ghana",      "Panamá"],
+    ["23/06 17:00", "Inglaterra", "Ghana"],
+    ["23/06 20:00", "Panamá",     "Croacia"],
+    ["27/06 18:00", "Croacia",    "Ghana"],
+    ["27/06 18:00", "Panamá",     "Inglaterra"]
+  ]);
+  form.setDestination(FormApp.DestinationType.SPREADSHEET, ss.getId());
+  PropertiesService.getScriptProperties().deleteProperty("F1_ID");
+  Logger.log("Link: " + form.getPublishedUrl());
+  Browser.msgBox("FORM COMPLETO!\n\nLink participantes:\n" + form.getPublishedUrl() + "\n\nEditar:\n" + form.getEditUrl());
+}
+
+
+function _addGrupo(form, nombre, equipos, partidos) {
+  form.addPageBreakItem()
+    .setTitle("GRUPO " + nombre)
+    .setHelpText(equipos.join(" · ") + "\n\nFormato: LOCAL-VISITANTE (ej: 2-1)");
+  for (var i = 0; i < partidos.length; i++) {
+    var fecha = partidos[i][0];
+    var loc   = partidos[i][1];
+    var vis   = partidos[i][2];
+    form.addTextItem()
+      .setTitle(fecha + " · " + loc + " vs " + vis)
+      .setHelpText("Ej: 2-1")
+      .setRequired(true);
+  }
+}

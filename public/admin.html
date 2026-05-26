@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin — Prode 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family:'Inter',sans-serif; background:#0a0e1a; }
+  h1,h2 { font-family:'Bebas Neue',sans-serif; }
+  .tab-btn { transition:all 0.15s; border-bottom:2px solid transparent; }
+  .tab-btn.active { color:#facc15; border-bottom-color:#facc15; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+  input[type=number],input[type=text],select,textarea {
+    background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15);
+    color:white; border-radius:0.5rem; padding:0.4rem 0.75rem;
+  }
+  input[type=number]:focus,input[type=text]:focus,select:focus,textarea:focus {
+    outline:none; border-color:#facc15;
+  }
+  select option { background:#1a2035; }
+  .btn-primary { background:#facc15; color:#000; font-weight:700; border-radius:0.75rem; padding:0.5rem 1.25rem; transition:opacity 0.15s; }
+  .btn-primary:hover { opacity:0.85; }
+  .btn-sm { background:rgba(255,255,255,0.1); color:white; border-radius:0.5rem; padding:0.3rem 0.75rem; font-size:0.8rem; transition:background 0.15s; }
+  .btn-sm:hover { background:rgba(255,255,255,0.18); }
+  .match-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:0.75rem; padding:0.75rem 1rem; }
+  .played-badge { background:rgba(34,197,94,0.15); color:#86efac; font-size:0.7rem; padding:0.15rem 0.5rem; border-radius:9999px; }
+  .toast { position:fixed; bottom:1.5rem; right:1.5rem; background:#1e293b; border:1px solid rgba(255,255,255,0.15); color:white; padding:0.75rem 1.25rem; border-radius:0.75rem; font-size:0.875rem; z-index:9999; animation:slideIn 0.3s ease; }
+  @keyframes slideIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body class="min-h-screen text-white" style="background:radial-gradient(ellipse at 60% 0%,#1a2a4a 0%,#0a0e1a 70%)">
+
+<header class="sticky top-0 z-50 bg-black/60 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <span class="text-2xl">🔧</span>
+    <h1 class="text-xl text-yellow-400">ADMIN</h1>
+    <span class="text-slate-600 text-sm">Panel de Control</span>
+  </div>
+  <nav class="flex gap-4 text-sm items-center">
+    <a href="leaderboard.html" class="text-slate-300 hover:text-yellow-400">🏆 Ranking</a>
+    <a href="standings.html"   class="text-slate-300 hover:text-yellow-400">📊 Grupos</a>
+    <a href="rules.html"       class="text-slate-300 hover:text-yellow-400">📋 Reglas</a>
+    <a href="/api/admin/export" download
+       class="bg-green-600 hover:bg-green-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition-colors">
+      ⬇ Exportar
+    </a>
+  </nav>
+</header>
+
+<!-- Tabs -->
+<div class="border-b border-white/10 px-4 flex gap-6">
+  <button onclick="switchTab('resultados')" class="tab-btn active py-3 text-sm font-medium text-white" id="t-resultados">Resultados Grupos</button>
+  <button onclick="switchTab('playoffs')"   class="tab-btn py-3 text-sm font-medium text-slate-400" id="t-playoffs">Playoffs</button>
+  <button onclick="switchTab('especiales')" class="tab-btn py-3 text-sm font-medium text-slate-400" id="t-especiales">Especiales</button>
+  <button onclick="switchTab('bonus')"      class="tab-btn py-3 text-sm font-medium text-slate-400" id="t-bonus">Bonus Tracks</button>
+</div>
+
+<main class="max-w-3xl mx-auto px-4 py-6">
+
+  <!-- ── TAB: RESULTADOS GRUPOS ─────────────────────────────────────── -->
+  <div class="tab-panel active" id="panel-resultados">
+    <div class="flex items-center justify-between mb-4">
+      <p class="text-slate-400 text-sm">Ingresá el resultado real de cada partido. Al guardar, los puntos se recalculan automáticamente.</p>
+      <button id="lockGroupsBtn" onclick="toggleGroupsLock()"
+        class="shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+      </button>
+    </div>
+
+    <!-- Group filter -->
+    <div class="flex flex-wrap gap-2 mb-4" id="adminGroupTabs"></div>
+
+    <div id="adminMatchList" class="space-y-3"></div>
+  </div>
+
+  <!-- ── TAB: PLAYOFFS ──────────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-playoffs">
+    <p class="text-slate-400 text-sm mb-4">Creá partidos de playoffs una vez que terminen los grupos. Indicá si hubo penales.</p>
+
+    <div class="match-card mb-6">
+      <h2 class="text-yellow-400 text-lg mb-3">Agregar partido playoff</h2>
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Fase</label>
+          <select id="po_stage" class="w-full text-sm">
+            <option value="r32">Round of 32</option>
+            <option value="r16">Round of 16</option>
+            <option value="qf">Cuartos de Final</option>
+            <option value="sf">Semifinal</option>
+            <option value="final">Final</option>
+            <option value="third">3er Puesto</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Kickoff (ej: 01/07 21:00)</label>
+          <input type="text" id="po_kickoff" placeholder="DD/MM HH:MM" class="w-full text-sm">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Equipo Local</label>
+          <input type="text" id="po_home" list="teamList" placeholder="Equipo" class="w-full text-sm">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Equipo Visitante</label>
+          <input type="text" id="po_away" list="teamList" placeholder="Equipo" class="w-full text-sm">
+        </div>
+      </div>
+      <datalist id="teamList"></datalist>
+      <button onclick="addPlayoffMatch()" class="btn-primary text-sm">+ Crear partido</button>
+    </div>
+
+    <div id="playoffMatchList" class="space-y-3"></div>
+  </div>
+
+  <!-- ── TAB: ESPECIALES ────────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-especiales">
+    <div class="flex items-center justify-between mb-4">
+      <p class="text-slate-400 text-sm">Ingresá los resultados reales de los picks especiales. Para Decepción y Revelación, separar con comas si hubo más de una.</p>
+      <button id="lockSpecialsBtn" onclick="toggleSpecialsLock()"
+        class="shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+      </button>
+    </div>
+
+    <div class="space-y-4" id="especialesForm">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+
+  <!-- ── TAB: BONUS TRACKS ──────────────────────────────────────────── -->
+  <div class="tab-panel" id="panel-bonus">
+    <div class="flex items-center justify-between mb-4">
+      <p class="text-slate-400 text-sm">Creá preguntas de bonus track (2 pts c/u, máx 10). Los jugadores responden antes del deadline.</p>
+      <button id="lockBonusBtn" onclick="toggleBonusLock()"
+        class="shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+      </button>
+    </div>
+
+    <div class="match-card mb-6">
+      <h2 class="text-yellow-400 text-lg mb-3">Nueva pregunta bonus</h2>
+      <div class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">N° de bonus</label>
+          <input type="number" id="bt_num" min="1" max="10" value="1" class="w-20 text-sm">
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Pregunta</label>
+          <textarea id="bt_question" rows="2" placeholder="Ej: ¿Quién será el primer amonestado de Argentina vs Jordania?"
+            class="w-full text-sm resize-none"></textarea>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Deadline (ej: 27/06 23:00)</label>
+          <input type="text" id="bt_deadline" placeholder="DD/MM HH:MM" class="w-full text-sm">
+        </div>
+        <button onclick="createBonus()" class="btn-primary text-sm">+ Publicar pregunta</button>
+      </div>
+    </div>
+
+    <div id="bonusList" class="space-y-3"></div>
+  </div>
+
+</main>
+
+<script>
+const ALL_TEAMS = ["Alemania","Arabia Saudita","Argelia","Argentina","Australia","Austria","Bélgica","Bosnia y Herzegovina","Brasil","Cabo Verde","Canadá","Colombia","Corea del Sur","Costa de Marfil","Croacia","Curazao","Ecuador","EE.UU.","Egipto","Escocia","España","Francia","Ghana","Haití","Inglaterra","Irak","Irán","Japón","Jordania","Marruecos","México","Noruega","Nueva Zelanda","Países Bajos","Panamá","Paraguay","Portugal","Qatar","RD Congo","Rep. Checa","Senegal","Sudáfrica","Suecia","Suiza","Túnez","Turquía","Uruguay","Uzbekistán"];
+const DECEPCION_TEAMS = ["Alemania","Argentina","Bélgica","Brasil","Colombia","Croacia","EE.UU.","España","Francia","Inglaterra","México","Países Bajos","Portugal","Suiza","Uruguay"];
+const REVELACION_TEAMS = ["Arabia Saudita","Australia","Cabo Verde","Curazao","Ghana","Haití","Irak","Irán","Jordania","Nueva Zelanda","Panamá","Qatar","RD Congo","Sudáfrica","Túnez","Uzbekistán"];
+const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+
+// Populate datalist
+document.getElementById('teamList').innerHTML = ALL_TEAMS.map(t=>`<option value="${t}">`).join('');
+
+let allMatches = [];
+let adminActiveGroup = 'A';
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(`panel-${name}`).classList.add('active');
+  document.getElementById(`t-${name}`).classList.add('active');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+
+function toast(msg, color='text-green-400') {
+  const el = document.createElement('div');
+  el.className = `toast ${color}`;
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 3000);
+}
+
+// ── Resultados Grupos ─────────────────────────────────────────────────────────
+
+function renderAdminTabs() {
+  const container = document.getElementById('adminGroupTabs');
+  container.innerHTML = GROUPS.map(g => {
+    const matches = allMatches.filter(m=>m.grp===g && m.stage==='group');
+    const played = matches.filter(m=>m.status==='played').length;
+    return `<button onclick="adminSwitchGroup('${g}')"
+      class="px-3 py-1.5 rounded-lg text-sm border text-slate-300 ${g===adminActiveGroup?'border-yellow-400 bg-yellow-400/10 text-yellow-400':'border-white/15 hover:border-yellow-400/40'}"
+      id="atab-${g}">${g} <span class="text-xs opacity-60">${played}/${matches.length}</span>
+    </button>`;
+  }).join('');
+}
+
+function adminSwitchGroup(g) {
+  adminActiveGroup = g;
+  renderAdminTabs();
+  renderAdminMatches();
+}
+
+function renderAdminMatches() {
+  const matches = allMatches.filter(m=>m.grp===adminActiveGroup && m.stage==='group');
+  const list = document.getElementById('adminMatchList');
+
+  list.innerHTML = matches.map(m => {
+    const played = m.status === 'played';
+    return `
+    <div class="match-card" id="am-${m.id}">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <div class="font-medium text-white">${m.team_home} vs ${m.team_away}</div>
+          <div class="text-xs text-slate-500">${m.kickoff_arg} · ${m.venue||''}</div>
+        </div>
+        ${played ? `<span class="played-badge">✓ ${m.score_home}-${m.score_away}</span>` : ''}
+      </div>
+      <div class="flex items-center gap-2 mt-3">
+        <input type="number" min="0" max="20" id="sh-${m.id}" value="${played?m.score_home:''}" placeholder="Local"
+          class="w-20 text-sm text-center" ${played?'':''}>
+        <span class="text-slate-400">–</span>
+        <input type="number" min="0" max="20" id="sa-${m.id}" value="${played?m.score_away:''}" placeholder="Visit."
+          class="w-20 text-sm text-center">
+        <button onclick="saveResult(${m.id})" class="btn-sm ml-2">${played ? '↻ Actualizar' : '✓ Guardar'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function saveResult(matchId) {
+  const sh = document.getElementById(`sh-${matchId}`).value;
+  const sa = document.getElementById(`sa-${matchId}`).value;
+  if (sh===''||sa==='') return toast('Ingresá ambos goles', 'text-red-400');
+
+  const res = await fetch('/api/admin/result', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ match_id:matchId, score_home:+sh, score_away:+sa })
+  });
+  if (res.ok) {
+    toast('✓ Resultado guardado — puntos recalculados');
+    loadMatches();
+  } else {
+    toast('✗ Error al guardar', 'text-red-400');
+  }
+}
+
+// ── Playoffs ──────────────────────────────────────────────────────────────────
+
+async function addPlayoffMatch() {
+  const stage    = document.getElementById('po_stage').value;
+  const home     = document.getElementById('po_home').value.trim();
+  const away     = document.getElementById('po_away').value.trim();
+  const kickoff  = document.getElementById('po_kickoff').value.trim();
+  if (!home||!away) return toast('Ingresá ambos equipos', 'text-red-400');
+
+  const res = await fetch('/api/admin/playoff-match', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ stage, team_home:home, team_away:away, kickoff_arg:kickoff||'TBD' })
+  });
+  if (res.ok) { toast('✓ Partido creado'); loadPlayoffMatches(); }
+  else toast('✗ Error', 'text-red-400');
+}
+
+async function savePlayoffResult(matchId) {
+  const sh      = document.getElementById(`psh-${matchId}`).value;
+  const sa      = document.getElementById(`psa-${matchId}`).value;
+  const pens    = document.getElementById(`pens-${matchId}`).checked;
+  const winner  = document.getElementById(`pw-${matchId}`)?.value || null;
+  if (sh===''||sa==='') return toast('Ingresá ambos goles', 'text-red-400');
+
+  const res = await fetch('/api/admin/playoff-result', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ match_id:matchId, score_home:+sh, score_away:+sa, went_to_pens:pens, pens_winner:winner })
+  });
+  if (res.ok) { toast('✓ Resultado playoff guardado'); loadPlayoffMatches(); }
+  else toast('✗ Error', 'text-red-400');
+}
+
+async function loadPlayoffMatches() {
+  const res = await fetch('/api/playoffs?user_id=-1');
+  const data = await res.json();
+  const STAGE_LABELS = { r32:'Round of 32', r16:'Round of 16', qf:'Cuartos', sf:'Semis', final:'Final', third:'3er Puesto' };
+  const list = document.getElementById('playoffMatchList');
+
+  const allPO = Object.entries(data).flatMap(([stage,matches]) => matches.map(m=>({...m,stage})));
+  if (!allPO.length) { list.innerHTML = '<p class="text-slate-500 text-sm">No hay partidos de playoff creados aún.</p>'; return; }
+
+  list.innerHTML = Object.entries(data).map(([stage, matches]) => {
+    if (!matches.length) return '';
+    const rows = matches.map(m => {
+      const played = m.status==='played';
+      return `
+      <div class="match-card mt-2" id="pm-${m.id}">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div class="font-medium text-white">${m.team_home} vs ${m.team_away}</div>
+          <div class="flex items-center gap-2">
+            ${played ? `<span class="played-badge">✓ ${m.score_home}-${m.score_away}${m.went_to_pens?` (P:${m.pens_winner})`:''}</span>` : ''}
+            <button onclick="deletePlayoffMatch(${m.id})" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded border border-red-400/30 hover:border-red-400/60 transition-colors">✕ Eliminar</button>
+          </div>
+        </div>
+        <div class="text-xs text-slate-500 mb-2">${m.kickoff_arg||''}</div>
+        <div class="flex items-center flex-wrap gap-2 mt-1">
+          <input type="number" min="0" max="20" id="psh-${m.id}" value="${played?m.score_home:''}" placeholder="Local" class="w-18 text-sm text-center" style="width:4.5rem">
+          <span class="text-slate-400">–</span>
+          <input type="number" min="0" max="20" id="psa-${m.id}" value="${played?m.score_away:''}" placeholder="Visit." class="w-18 text-sm text-center" style="width:4.5rem">
+          <label class="flex items-center gap-1.5 text-xs text-slate-400 ml-1">
+            <input type="checkbox" id="pens-${m.id}" ${m.went_to_pens?'checked':''} onchange="togglePensWinner(${m.id}, this.checked)"> Penales
+          </label>
+          <select id="pw-${m.id}" class="text-xs ${!m.went_to_pens?'hidden':''}" style="width:auto;padding:0.25rem 0.5rem">
+            <option value="home" ${m.pens_winner==='home'?'selected':''}>Ganó Local</option>
+            <option value="away" ${m.pens_winner==='away'?'selected':''}>Ganó Visitante</option>
+          </select>
+          <button onclick="savePlayoffResult(${m.id})" class="btn-sm">${played?'↻ Actualizar':'✓ Guardar'}</button>
+        </div>
+      </div>`;
+    }).join('');
+    return `<div class="mb-4"><h2 class="text-yellow-400 text-lg mb-2">${STAGE_LABELS[stage]||stage}</h2>${rows}</div>`;
+  }).join('');
+}
+
+function togglePensWinner(matchId, show) {
+  const el = document.getElementById(`pw-${matchId}`);
+  if (el) el.classList.toggle('hidden', !show);
+}
+
+async function deletePlayoffMatch(matchId) {
+  if (!confirm('¿Eliminar este partido? También se borran todos los pronósticos asociados.')) return;
+  const res = await fetch(`/api/admin/playoff-match/${matchId}`, { method: 'DELETE' });
+  if (res.ok) { toast('✓ Partido eliminado'); loadPlayoffMatches(); }
+  else toast('✗ Error', 'text-red-400');
+}
+
+// ── Especiales ────────────────────────────────────────────────────────────────
+
+async function loadEspeciales() {
+  const res = await fetch('/api/admin/special-actuals');
+  const actuals = await res.json();
+
+  const FIELDS = [
+    { key:'campeon',    label:'Campeón del Mundial (15 pts)',       opts: ALL_TEAMS },
+    { key:'subcampeon', label:'Subcampeón (10 pts)',                 opts: ALL_TEAMS },
+    { key:'tercero',    label:'Tercer Puesto (5 pts)',               opts: ALL_TEAMS },
+    { key:'goleador',   label:'Goleador (7 pts)',                    opts: null },
+    { key:'decepcion',  label:'Decepción (7 pts, separar con comas si hay más de una)', opts: DECEPCION_TEAMS, multi: true },
+    { key:'revelacion', label:'Revelación (7 pts)',                   opts: REVELACION_TEAMS },
+  ];
+
+  document.getElementById('especialesForm').innerHTML = FIELDS.map(f => {
+    const saved = actuals[f.key] || '';
+    const input = f.opts
+      ? `<select id="esp-${f.key}" class="w-full text-sm" style="background:#1a2035">
+           <option value="">— sin resultado aún —</option>
+           ${f.opts.map(t=>`<option value="${t}" ${saved===t?'selected':''}>${t}</option>`).join('')}
+         </select>`
+      : `<input type="text" id="esp-${f.key}" value="${saved}" placeholder="Nombre completo del jugador" class="w-full text-sm">`;
+
+    return `
+    <div class="match-card">
+      <label class="text-sm font-medium text-white block mb-2">${f.label}</label>
+      ${f.multi ? `<input type="text" id="esp-${f.key}" value="${saved}" placeholder="Ej: Francia, México" class="w-full text-sm">` : input}
+      ${saved ? `<p class="text-xs text-green-400 mt-1">✓ Actual: ${saved}</p>` : ''}
+      <button onclick="saveEspecial('${f.key}')" class="btn-sm mt-2">Guardar</button>
+    </div>`;
+  }).join('');
+}
+
+async function saveEspecial(category) {
+  const value = document.getElementById(`esp-${category}`).value.trim();
+  if (!value) return toast('Ingresá un valor', 'text-red-400');
+  const res = await fetch('/api/admin/special-result', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ category, actual_value: value })
+  });
+  if (res.ok) { toast('✓ Especial guardado — puntos recalculados'); loadEspeciales(); }
+  else toast('✗ Error', 'text-red-400');
+}
+
+// ── Bonus Tracks ──────────────────────────────────────────────────────────────
+
+async function createBonus() {
+  const num      = document.getElementById('bt_num').value;
+  const question = document.getElementById('bt_question').value.trim();
+  const deadline = document.getElementById('bt_deadline').value.trim();
+  if (!question||!deadline) return toast('Ingresá pregunta y deadline', 'text-red-400');
+
+  const res = await fetch('/api/admin/bonus-track', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ question_number:+num, question_text:question, deadline_arg:deadline })
+  });
+  if (res.ok) {
+    toast('✓ Bonus publicado');
+    document.getElementById('bt_question').value='';
+    document.getElementById('bt_deadline').value='';
+    loadBonus();
+  } else toast('✗ Error', 'text-red-400');
+}
+
+async function resolveBonus(id) {
+  const answer = document.getElementById(`ba-${id}`).value.trim();
+  if (!answer) return toast('Ingresá la respuesta correcta', 'text-red-400');
+  const res = await fetch('/api/admin/bonus-result', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ bonus_track_id:id, correct_answer:answer })
+  });
+  if (res.ok) { toast('✓ Bonus resuelto — 2 pts a los ganadores'); loadBonus(); }
+  else toast('✗ Error', 'text-red-400');
+}
+
+async function loadBonus() {
+  const res  = await fetch('/api/bonus-tracks?user_id=-1');
+  const list = await res.json();
+  const el   = document.getElementById('bonusList');
+
+  if (!list.length) { el.innerHTML = '<p class="text-slate-500 text-sm">No hay bonus tracks aún.</p>'; return; }
+
+  el.innerHTML = list.map(bt => {
+    const isResolved = bt.status === 'resolved';
+    const statusLabel = isResolved ? '<span class="text-xs text-green-400">✓ Resuelto</span>'
+                      : bt.status === 'open' ? '<span class="text-xs text-blue-400">Abierto</span>'
+                      : '<span class="text-xs text-orange-400">Cerrado</span>';
+    return `
+    <div class="match-card" id="btc-${bt.id}">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs bg-yellow-400/20 text-yellow-300 px-2 py-0.5 rounded-full">Bonus #${bt.question_number}</span>
+        <div class="flex items-center gap-2">
+          ${statusLabel}
+          ${isResolved || bt.status === 'closed'
+            ? `<button onclick="reopenBonus(${bt.id})" class="btn-sm text-xs">🔓 Reabrir</button>`
+            : ''}
+          <button onclick="toggleEditBonus(${bt.id})" class="btn-sm text-xs">✏ Editar</button>
+        </div>
+      </div>
+
+      <!-- View mode -->
+      <div id="btv-${bt.id}">
+        <p class="text-white text-sm mb-1">${bt.question_text}</p>
+        <p class="text-xs text-slate-500 mb-3">Deadline: ${bt.deadline_arg}</p>
+        ${isResolved
+          ? `<p class="text-green-400 text-sm">✓ Respuesta correcta: <strong>${bt.correct_answer}</strong></p>`
+          : `<div class="flex gap-2">
+               <input type="text" id="ba-${bt.id}" placeholder="Respuesta correcta" class="flex-1 text-sm">
+               <button onclick="resolveBonus(${bt.id})" class="btn-sm">Resolver</button>
+             </div>`
+        }
+      </div>
+
+      <!-- Edit mode (hidden) -->
+      <div id="bte-${bt.id}" class="hidden mt-3 pt-3 border-t border-white/10 space-y-2">
+        <div class="flex gap-2">
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">N°</label>
+            <input type="number" id="btn-${bt.id}" value="${bt.question_number}" min="1" max="10" class="w-16 text-sm">
+          </div>
+          <div class="flex-1">
+            <label class="text-xs text-slate-400 block mb-1">Deadline</label>
+            <input type="text" id="btd-${bt.id}" value="${bt.deadline_arg}" placeholder="DD/MM HH:MM" class="w-full text-sm">
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-slate-400 block mb-1">Pregunta</label>
+          <textarea id="btq-${bt.id}" rows="2" class="w-full text-sm resize-none">${bt.question_text}</textarea>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="saveEditBonus(${bt.id})" class="btn-primary text-sm">Guardar cambios</button>
+          <button onclick="toggleEditBonus(${bt.id})" class="btn-sm text-sm">Cancelar</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleEditBonus(id) {
+  document.getElementById(`btv-${id}`).classList.toggle('hidden');
+  document.getElementById(`bte-${id}`).classList.toggle('hidden');
+}
+
+async function saveEditBonus(id) {
+  const qn = document.getElementById(`btn-${id}`).value;
+  const qt = document.getElementById(`btq-${id}`).value.trim();
+  const dl = document.getElementById(`btd-${id}`).value.trim();
+  if (!qt || !dl) return toast('✗ Faltan campos', 'text-red-400');
+  const res = await fetch(`/api/admin/bonus-track/${id}`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ question_number: +qn, question_text: qt, deadline_arg: dl })
+  });
+  if (res.ok) { toast('✓ Bonus actualizado'); loadBonus(); }
+  else toast('✗ Error', 'text-red-400');
+}
+
+async function reopenBonus(id) {
+  const res = await fetch(`/api/admin/bonus-track/${id}/reopen`, { method: 'POST' });
+  if (res.ok) { toast('🔓 Bonus reabierto — puntos reseteados'); loadBonus(); }
+  else toast('✗ Error', 'text-red-400');
+}
+
+// ── Especiales lock ───────────────────────────────────────────────────────────
+
+let specialsLocked = false;
+
+function renderLockBtn(locked) {
+  specialsLocked = locked;
+  const btn = document.getElementById('lockSpecialsBtn');
+  if (locked) {
+    btn.textContent = '🔓 Desbloquear picks especiales';
+    btn.className = 'shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-green-600 hover:bg-green-500 text-white';
+  } else {
+    btn.textContent = '🔒 Bloquear picks especiales';
+    btn.className = 'shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-red-600 hover:bg-red-500 text-white';
+  }
+}
+
+async function loadSpecialsLockState() {
+  const res = await fetch('/api/settings/special-picks-locked');
+  const { locked } = await res.json();
+  renderLockBtn(locked);
+}
+
+async function toggleSpecialsLock() {
+  const res = await fetch('/api/admin/special-picks-lock', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ locked: !specialsLocked })
+  });
+  if (res.ok) {
+    const { locked } = await res.json();
+    renderLockBtn(locked);
+    toast(locked ? '🔒 Picks especiales bloqueados' : '🔓 Picks especiales desbloqueados');
+  }
+}
+
+// ── Groups lock ───────────────────────────────────────────────────────────────
+
+let groupsLocked = false;
+
+function renderGroupsLockBtn(locked) {
+  groupsLocked = locked;
+  const btn = document.getElementById('lockGroupsBtn');
+  if (locked) {
+    btn.textContent = '🔓 Desbloquear pronósticos';
+    btn.className = 'shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-green-600 hover:bg-green-500 text-white';
+  } else {
+    btn.textContent = '🔒 Bloquear pronósticos';
+    btn.className = 'shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-red-600 hover:bg-red-500 text-white';
+  }
+}
+
+async function loadGroupsLockState() {
+  const res = await fetch('/api/settings/group-predictions-locked');
+  const { locked } = await res.json();
+  renderGroupsLockBtn(locked);
+}
+
+async function toggleGroupsLock() {
+  const res = await fetch('/api/admin/group-predictions-lock', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ locked: !groupsLocked })
+  });
+  if (res.ok) {
+    const { locked } = await res.json();
+    renderGroupsLockBtn(locked);
+    toast(locked ? '🔒 Pronósticos de grupos bloqueados' : '🔓 Pronósticos de grupos desbloqueados');
+  }
+}
+
+// ── Bonus lock ────────────────────────────────────────────────────────────────
+
+let bonusLocked = false;
+
+function renderBonusLockBtn(locked) {
+  bonusLocked = locked;
+  const btn = document.getElementById('lockBonusBtn');
+  if (locked) {
+    btn.textContent = '🔓 Desbloquear bonus';
+    btn.className = 'shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-green-600 hover:bg-green-500 text-white';
+  } else {
+    btn.textContent = '🔒 Bloquear bonus';
+    btn.className = 'shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-red-600 hover:bg-red-500 text-white';
+  }
+}
+
+async function loadBonusLockState() {
+  const res = await fetch('/api/settings/bonus-answers-locked');
+  const { locked } = await res.json();
+  renderBonusLockBtn(locked);
+}
+
+async function toggleBonusLock() {
+  const res = await fetch('/api/admin/bonus-answers-lock', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ locked: !bonusLocked })
+  });
+  if (res.ok) {
+    const { locked } = await res.json();
+    renderBonusLockBtn(locked);
+    toast(locked ? '🔒 Respuestas bonus bloqueadas' : '🔓 Respuestas bonus desbloqueadas');
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+async function loadMatches() {
+  const res  = await fetch('/api/matches?user_id=-1');
+  allMatches = await res.json();
+  renderAdminTabs();
+  renderAdminMatches();
+}
+
+loadMatches();
+loadPlayoffMatches();
+loadEspeciales();
+loadBonus();
+loadSpecialsLockState();
+loadGroupsLockState();
+loadBonusLockState();
+</script>
+</body>
+</html>

@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reglas — Prode 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family:'Inter',sans-serif; background:#0a0e1a; }
+  h1,h2,h3 { font-family:'Bebas Neue',sans-serif; }
+  .card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:1rem; padding:1.5rem; }
+  .pts-badge { display:inline-block; font-weight:700; font-size:1.1rem; min-width:3rem; text-align:center; padding:0.2rem 0.6rem; border-radius:0.5rem; }
+  .section-divider { border:none; border-top:1px solid rgba(255,255,255,0.07); margin:2rem 0; }
+  ul li::before { content:"→"; color:#facc15; margin-right:0.5rem; font-weight:700; }
+  ul li { list-style:none; margin-bottom:0.4rem; }
+  .team-pill { display:inline-block; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.12); border-radius:9999px; padding:0.15rem 0.6rem; font-size:0.75rem; margin:2px; }
+</style>
+</head>
+<body class="min-h-screen text-white" style="background:radial-gradient(ellipse at 60% 0%,#1a2a4a 0%,#0a0e1a 70%)">
+
+<header class="sticky top-0 z-50 bg-black/60 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <a href="predictions.html" class="text-slate-400 hover:text-white mr-1">←</a>
+    <span class="text-2xl">📋</span>
+    <h1 class="text-xl text-yellow-400">REGLAS</h1>
+  </div>
+  <nav class="flex gap-4 text-sm">
+    <a href="leaderboard.html" class="text-slate-300 hover:text-yellow-400 transition-colors">🏆 Ranking</a>
+    <a href="predictions.html" class="text-slate-300 hover:text-yellow-400 transition-colors">⚽ Pronósticos</a>
+  </nav>
+</header>
+
+<main class="max-w-2xl mx-auto px-4 py-8 space-y-6">
+
+  <!-- Header -->
+  <div class="text-center mb-2">
+    <h2 class="text-4xl text-yellow-400 mb-1">PRODE MUNDIAL USA 2026</h2>
+    <p class="text-slate-400">Berlín Edition</p>
+  </div>
+
+  <!-- Inscripción -->
+  <div class="card border-yellow-400/20">
+    <h3 class="text-yellow-400 text-2xl mb-3">INSCRIPCIÓN</h3>
+    <ul class="text-slate-300 text-sm space-y-1">
+      <li>Inscripción: <strong class="text-white">$100.000</strong> — pagar antes del 8 de junio</li>
+      <li>Si no pagás antes de esa fecha, no participás del Prode</li>
+      <li>Completar la fase de grupos <strong class="text-white">completa antes del 9 de junio</strong></li>
+      <li>Completar todos los puntajes especiales antes del 9 de junio</li>
+      <li>Los playoffs se completan a medida que van avanzando las rondas</li>
+    </ul>
+  </div>
+
+  <!-- Sistema de puntos -->
+  <div class="card">
+    <h3 class="text-yellow-400 text-2xl mb-4">SISTEMA DE PUNTOS</h3>
+
+    <h4 class="text-white font-semibold mb-3 text-sm uppercase tracking-widest">Fase de Grupos</h4>
+    <div class="space-y-2 mb-6">
+      <div class="flex items-center gap-4">
+        <span class="pts-badge bg-red-500/20 text-red-400">0</span>
+        <span class="text-slate-300 text-sm">Resultado erróneo</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="pts-badge bg-blue-500/20 text-blue-400">2</span>
+        <span class="text-slate-300 text-sm">Resultado correcto (ganador o empate), pero score no exacto</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="pts-badge bg-green-500/20 text-green-400">5</span>
+        <span class="text-slate-300 text-sm">Score <strong class="text-white">exacto</strong> (p. ej. predeciste 2-1 y fue 2-1)</span>
+      </div>
+    </div>
+
+    <h4 class="text-white font-semibold mb-3 text-sm uppercase tracking-widest">Playoffs (misma lógica + penales)</h4>
+    <div class="space-y-2 mb-2">
+      <div class="flex items-center gap-4">
+        <span class="pts-badge bg-orange-500/20 text-orange-400">1</span>
+        <span class="text-slate-300 text-sm">Empate al 90' y va a penales, pero ganó el equipo que <strong class="text-white">no elegiste</strong></span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="pts-badge bg-blue-500/20 text-blue-400">2</span>
+        <span class="text-slate-300 text-sm">Empate al 90', ganó tu equipo en penales, score <strong class="text-white">no exacto</strong></span>
+      </div>
+      <div class="flex items-center gap-4">
+        <span class="pts-badge bg-green-500/20 text-green-400">5</span>
+        <span class="text-slate-300 text-sm">Empate al 90', ganó tu equipo en penales, score <strong class="text-white">exacto</strong> al 90'</span>
+      </div>
+    </div>
+    <p class="text-slate-500 text-xs mt-2">* En playoffs sin penales rige la misma regla que grupos (0/2/5).</p>
+  </div>
+
+  <!-- Puntajes especiales -->
+  <div class="card">
+    <h3 class="text-yellow-400 text-2xl mb-4">PUNTAJES ESPECIALES</h3>
+    <div class="space-y-3">
+
+      <div class="flex items-start gap-4">
+        <span class="pts-badge bg-yellow-500/20 text-yellow-400 mt-0.5">15</span>
+        <div>
+          <p class="text-white font-semibold text-sm">Campeón del Mundial</p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-4">
+        <span class="pts-badge bg-slate-400/20 text-slate-300 mt-0.5">10</span>
+        <div>
+          <p class="text-white font-semibold text-sm">Subcampeón</p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-4">
+        <span class="pts-badge bg-amber-700/30 text-amber-500 mt-0.5">5</span>
+        <div>
+          <p class="text-white font-semibold text-sm">Tercer Puesto</p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-4">
+        <span class="pts-badge bg-green-500/20 text-green-400 mt-0.5">7</span>
+        <div>
+          <p class="text-white font-semibold text-sm">Goleador del torneo</p>
+          <p class="text-slate-400 text-xs mt-0.5">Si hay dos goleadores compartidos, ambos aciertan y suman 7 pts.</p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-4">
+        <span class="pts-badge bg-red-500/20 text-red-400 mt-0.5">7</span>
+        <div>
+          <p class="text-white font-semibold text-sm">Decepción</p>
+          <p class="text-slate-400 text-xs mt-0.5">Un equipo top que NO pasa la fase de grupos. Si hay más de una decepción, todos los que acertaron cualquiera de ellas suman 7 pts.</p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-4">
+        <span class="pts-badge bg-purple-500/20 text-purple-400 mt-0.5">7</span>
+        <div>
+          <p class="text-white font-semibold text-sm">Revelación</p>
+          <p class="text-slate-400 text-xs mt-0.5">Un equipo underdog que SÍ pasa grupos. Si hay más de una, vale la que llegó más lejos. Si quedan eliminadas en la misma instancia, suman todos los que acertaron.</p>
+        </div>
+      </div>
+
+      <div class="flex items-start gap-4">
+        <span class="pts-badge bg-blue-500/20 text-blue-400 mt-0.5">2</span>
+        <div>
+          <p class="text-white font-semibold text-sm">Bonus Track <span class="text-slate-500 font-normal">(×10, máximo 20 pts)</span></p>
+          <p class="text-slate-400 text-xs mt-0.5">10 preguntas especiales enviadas con anticipación antes de partidos clave. Hay que responder antes del inicio del partido.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Desempate -->
+  <div class="card border-slate-700/50">
+    <h3 class="text-yellow-400 text-2xl mb-3">DESEMPATE</h3>
+    <p class="text-slate-400 text-sm mb-3">En caso de empate en puntos totales, se define por orden de prioridad:</p>
+    <ol class="space-y-2 text-sm text-slate-300">
+      <li class="flex gap-3"><span class="text-yellow-400 font-bold w-5">1.</span>Mayor cantidad de resultados <strong class="text-white">exactos</strong> acertados</li>
+      <li class="flex gap-3"><span class="text-yellow-400 font-bold w-5">2.</span>Mayor cantidad de exactos con <strong class="text-white">3 o más goles</strong> en el partido</li>
+      <li class="flex gap-3"><span class="text-yellow-400 font-bold w-5">3.</span>Mayor cantidad de <strong class="text-white">bonus tracks</strong> ganados</li>
+    </ol>
+  </div>
+
+  <!-- Premios -->
+  <div class="card border-yellow-400/30" style="background:rgba(250,204,21,0.05)">
+    <h3 class="text-yellow-400 text-2xl mb-3">PREMIOS 🏆</h3>
+    <div class="space-y-2 text-sm">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🥇</span>
+        <p class="text-white"><strong>1° puesto</strong> — se lleva el total recaudado menos $200.000</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🥈</span>
+        <p class="text-slate-300"><strong>2° puesto</strong> — $200.000 para el consolador</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Equipos posibles -->
+  <div class="card">
+    <h3 class="text-yellow-400 text-2xl mb-4">LISTAS DE CANDIDATOS</h3>
+
+    <h4 class="text-red-400 font-semibold text-sm mb-2 uppercase tracking-widest">Posibles Decepciones</h4>
+    <div class="mb-4">
+      <span class="team-pill text-red-300">Países Bajos</span><span class="team-pill text-red-300">Inglaterra</span><span class="team-pill text-red-300">Argentina</span><span class="team-pill text-red-300">Francia</span><span class="team-pill text-red-300">México</span><span class="team-pill text-red-300">España</span><span class="team-pill text-red-300">Alemania</span><span class="team-pill text-red-300">Colombia</span><span class="team-pill text-red-300">Bélgica</span><span class="team-pill text-red-300">Croacia</span><span class="team-pill text-red-300">Suiza</span><span class="team-pill text-red-300">USA</span><span class="team-pill text-red-300">Brasil</span><span class="team-pill text-red-300">Portugal</span><span class="team-pill text-red-300">Uruguay</span>
+    </div>
+
+    <h4 class="text-purple-400 font-semibold text-sm mb-2 uppercase tracking-widest">Posibles Revelaciones</h4>
+    <div>
+      <span class="team-pill text-purple-300">Sudáfrica</span><span class="team-pill text-purple-300">Qatar</span><span class="team-pill text-purple-300">Haití</span><span class="team-pill text-purple-300">Australia</span><span class="team-pill text-purple-300">Curazao</span><span class="team-pill text-purple-300">Túnez</span><span class="team-pill text-purple-300">Irán</span><span class="team-pill text-purple-300">Nueva Zelanda</span><span class="team-pill text-purple-300">Cabo Verde</span><span class="team-pill text-purple-300">Arabia Saudita</span><span class="team-pill text-purple-300">Irak</span><span class="team-pill text-purple-300">Jordania</span><span class="team-pill text-purple-300">RD Congo</span><span class="team-pill text-purple-300">Uzbekistán</span><span class="team-pill text-purple-300">Ghana</span><span class="team-pill text-purple-300">Panamá</span>
+    </div>
+  </div>
+
+  <p class="text-center text-slate-600 text-xs pb-6">Comisión Normalizadora de Pronósticos Deportivos · Berlín 2026</p>
+</main>
+</body>
+</html>

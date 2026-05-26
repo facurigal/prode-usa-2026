@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ranking — Prode 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family:'Inter',sans-serif; background:#0a0e1a; }
+  h1 { font-family:'Bebas Neue',sans-serif; }
+  .row-enter { animation: rowIn 0.4s ease; }
+  @keyframes rowIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .breakdown-pill {
+    display:inline-block; font-size:0.65rem; padding:0.15rem 0.5rem;
+    border-radius:9999px; margin:1px; font-weight:600;
+  }
+  .pulse-update { animation: pulseYellow 0.6s ease; }
+  @keyframes pulseYellow { 0%,100%{background:transparent} 50%{background:rgba(250,204,21,0.15)} }
+</style>
+</head>
+<body class="min-h-screen text-white" style="background:radial-gradient(ellipse at 60% 0%,#1a2a4a 0%,#0a0e1a 70%)">
+
+<header class="sticky top-0 z-50 bg-black/60 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <a href="predictions.html" class="text-slate-400 hover:text-white mr-1">←</a>
+    <span class="text-2xl">🏆</span>
+    <h1 class="text-xl text-yellow-400">RANKING</h1>
+  </div>
+  <nav class="flex gap-4 text-sm">
+    <a href="standings.html"   class="text-slate-300 hover:text-yellow-400 transition-colors">📊 Grupos</a>
+    <a href="predictions.html" class="text-slate-300 hover:text-yellow-400 transition-colors">⚽ Pronósticos</a>
+    <a href="playoffs.html"    class="text-slate-300 hover:text-yellow-400 transition-colors">⚡ Playoffs</a>
+    <a href="rules.html"       class="text-slate-300 hover:text-yellow-400 transition-colors">📋 Reglas</a>
+  </nav>
+</header>
+
+<main class="max-w-4xl mx-auto px-4 py-6">
+
+  <!-- Live indicator -->
+  <div class="flex items-center gap-2 mb-4">
+    <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+    <span class="text-xs text-slate-400">Actualización en tiempo real</span>
+  </div>
+
+  <!-- Legend -->
+  <div class="flex flex-wrap gap-2 mb-5 text-xs">
+    <span class="breakdown-pill bg-blue-400/20 text-blue-300">Grupos</span>
+    <span class="breakdown-pill bg-purple-400/20 text-purple-300">Playoffs</span>
+    <span class="breakdown-pill bg-yellow-400/20 text-yellow-300">Campeón</span>
+    <span class="breakdown-pill bg-slate-400/20 text-slate-300">Sub/3ro/Gol</span>
+    <span class="breakdown-pill bg-red-400/20 text-red-300">Dec/Rev</span>
+    <span class="breakdown-pill bg-green-400/20 text-green-300">Bonus</span>
+  </div>
+
+  <div id="leaderboard" class="space-y-2">
+    <div class="text-slate-500 text-center py-12">Cargando...</div>
+  </div>
+</main>
+
+<script>
+const socket = io();
+const storedUser = localStorage.getItem('prode_user');
+const myId = storedUser ? JSON.parse(storedUser).id : -1;
+
+const medals = ['🥇','🥈','🥉'];
+
+function pill(label, val, colorClass) {
+  if (!val) return '';
+  return `<span class="breakdown-pill ${colorClass}">${label}: ${val}</span>`;
+}
+
+function renderLeaderboard(data) {
+  const el = document.getElementById('leaderboard');
+  if (!data.length) {
+    el.innerHTML = '<div class="text-slate-500 text-center py-12">Sin participantes aún.</div>';
+    return;
+  }
+
+  el.innerHTML = data.map((p, i) => {
+    const isMe = p.id === myId;
+    const playoffTotal = p.pts_r32 + p.pts_r16 + p.pts_qf + p.pts_sf + p.pts_final;
+    const specialTotal = p.pts_campeon + p.pts_subcampeon + p.pts_tercero + p.pts_goleador + p.pts_decepcion + p.pts_revelacion;
+
+    return `
+    <div class="pulse-update rounded-xl border px-4 py-3 ${isMe ? 'border-yellow-400/50 bg-yellow-400/5' : 'border-white/8 bg-white/4'}" id="pr-${p.id}">
+      <div class="flex items-center gap-3">
+        <!-- Rank -->
+        <div class="text-2xl w-8 text-center shrink-0">
+          ${i < 3 ? medals[i] : `<span class="text-slate-500 text-base font-bold">${p.rank}</span>`}
+        </div>
+
+        <!-- Name + breakdown -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="font-semibold text-white ${isMe ? 'text-yellow-300' : ''}">${p.name}</span>
+            ${isMe ? '<span class="text-xs bg-yellow-400/20 text-yellow-300 px-1.5 py-0.5 rounded">Tú</span>' : ''}
+          </div>
+          <div class="mt-1 flex flex-wrap gap-0.5">
+            ${pill('Grupos', p.pts_groups || null, 'bg-blue-400/20 text-blue-300')}
+            ${playoffTotal ? pill('Playoffs', playoffTotal, 'bg-purple-400/20 text-purple-300') : ''}
+            ${pill('Campeón', p.pts_campeon || null, 'bg-yellow-400/20 text-yellow-300')}
+            ${(p.pts_subcampeon||p.pts_tercero||p.pts_goleador) ? pill('Sub/3ro/Gol', (p.pts_subcampeon+p.pts_tercero+p.pts_goleador)||null, 'bg-slate-400/20 text-slate-300') : ''}
+            ${(p.pts_decepcion||p.pts_revelacion) ? pill('Dec/Rev', (p.pts_decepcion+p.pts_revelacion)||null, 'bg-red-400/20 text-red-300') : ''}
+            ${pill('Bonus', p.pts_bonus || null, 'bg-green-400/20 text-green-300')}
+          </div>
+        </div>
+
+        <!-- Total -->
+        <div class="shrink-0 text-right">
+          <div class="text-2xl font-bold ${isMe ? 'text-yellow-400' : 'text-white'}">${p.total}</div>
+          <div class="text-xs text-slate-500">pts</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function load() {
+  const res = await fetch('/api/leaderboard');
+  renderLeaderboard(await res.json());
+}
+
+socket.on('leaderboard:updated', renderLeaderboard);
+
+load();
+</script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+// All 72 group stage matches — sourced from Code forms.txt (Google Apps Script)
+// kickoff_arg = Argentina time (UTC-3)
+module.exports = [
+  // ── GRUPO A ──────────────────────────────────────────────────────────
+  { id:  1, group:'A', home:'México',        away:'Sudáfrica',          kickoff_arg:'11/06 16:00', venue:'Ciudad de México' },
+  { id:  2, group:'A', home:'Corea del Sur', away:'Rep. Checa',         kickoff_arg:'11/06 23:00', venue:'Guadalajara' },
+  { id:  3, group:'A', home:'Rep. Checa',    away:'Sudáfrica',          kickoff_arg:'18/06 13:00', venue:'Atlanta' },
+  { id:  4, group:'A', home:'México',        away:'Corea del Sur',      kickoff_arg:'18/06 22:00', venue:'Guadalajara' },
+  { id:  5, group:'A', home:'México',        away:'Rep. Checa',         kickoff_arg:'24/06 22:00', venue:'Ciudad de México' },
+  { id:  6, group:'A', home:'Sudáfrica',     away:'Corea del Sur',      kickoff_arg:'24/06 22:00', venue:'Monterrey' },
+  // ── GRUPO B ──────────────────────────────────────────────────────────
+  { id:  7, group:'B', home:'Canadá',               away:'Bosnia y Herzegovina', kickoff_arg:'12/06 16:00', venue:'Toronto' },
+  { id:  8, group:'B', home:'Qatar',                away:'Suiza',               kickoff_arg:'13/06 16:00', venue:'San Francisco' },
+  { id:  9, group:'B', home:'Suiza',                away:'Bosnia y Herzegovina', kickoff_arg:'18/06 16:00', venue:'Los Ángeles' },
+  { id: 10, group:'B', home:'Canadá',               away:'Qatar',               kickoff_arg:'18/06 19:00', venue:'Vancouver' },
+  { id: 11, group:'B', home:'Suiza',                away:'Canadá',              kickoff_arg:'24/06 16:00', venue:'Vancouver' },
+  { id: 12, group:'B', home:'Bosnia y Herzegovina', away:'Qatar',               kickoff_arg:'24/06 16:00', venue:'Seattle' },
+  // ── GRUPO C ──────────────────────────────────────────────────────────
+  { id: 13, group:'C', home:'Brasil',    away:'Marruecos', kickoff_arg:'13/06 19:00', venue:'Nueva Jersey' },
+  { id: 14, group:'C', home:'Haití',     away:'Escocia',   kickoff_arg:'13/06 22:00', venue:'Boston' },
+  { id: 15, group:'C', home:'Escocia',   away:'Marruecos', kickoff_arg:'19/06 19:00', venue:'Boston' },
+  { id: 16, group:'C', home:'Brasil',    away:'Haití',     kickoff_arg:'19/06 21:30', venue:'Philadelphia' },
+  { id: 17, group:'C', home:'Brasil',    away:'Escocia',   kickoff_arg:'24/06 19:00', venue:'Miami' },
+  { id: 18, group:'C', home:'Marruecos', away:'Haití',     kickoff_arg:'24/06 19:00', venue:'Atlanta' },
+  // ── GRUPO D ──────────────────────────────────────────────────────────
+  { id: 19, group:'D', home:'EE.UU.',    away:'Paraguay',  kickoff_arg:'12/06 22:00', venue:'Los Ángeles' },
+  { id: 20, group:'D', home:'Australia', away:'Turquía',   kickoff_arg:'13/06 01:00', venue:'Vancouver' },
+  { id: 21, group:'D', home:'EE.UU.',    away:'Australia', kickoff_arg:'19/06 16:00', venue:'Seattle' },
+  { id: 22, group:'D', home:'Turquía',   away:'Paraguay',  kickoff_arg:'19/06 23:00', venue:'San Francisco' },
+  { id: 23, group:'D', home:'EE.UU.',    away:'Turquía',   kickoff_arg:'25/06 23:00', venue:'Los Ángeles' },
+  { id: 24, group:'D', home:'Paraguay',  away:'Australia', kickoff_arg:'25/06 23:00', venue:'San Francisco' },
+  // ── GRUPO E ──────────────────────────────────────────────────────────
+  { id: 25, group:'E', home:'Alemania',        away:'Curazao',         kickoff_arg:'14/06 14:00', venue:'Houston' },
+  { id: 26, group:'E', home:'Costa de Marfil', away:'Ecuador',         kickoff_arg:'14/06 20:00', venue:'Philadelphia' },
+  { id: 27, group:'E', home:'Alemania',        away:'Costa de Marfil', kickoff_arg:'20/06 17:00', venue:'Toronto' },
+  { id: 28, group:'E', home:'Ecuador',         away:'Curazao',         kickoff_arg:'20/06 23:00', venue:'Kansas City' },
+  { id: 29, group:'E', home:'Curazao',         away:'Costa de Marfil', kickoff_arg:'25/06 17:00', venue:'Philadelphia' },
+  { id: 30, group:'E', home:'Ecuador',         away:'Alemania',        kickoff_arg:'25/06 17:00', venue:'Nueva Jersey' },
+  // ── GRUPO F ──────────────────────────────────────────────────────────
+  { id: 31, group:'F', home:'Países Bajos', away:'Japón',        kickoff_arg:'14/06 17:00', venue:'Dallas' },
+  { id: 32, group:'F', home:'Suecia',       away:'Túnez',        kickoff_arg:'14/06 23:00', venue:'Monterrey' },
+  { id: 33, group:'F', home:'Túnez',        away:'Japón',        kickoff_arg:'20/06 01:00', venue:'Monterrey' },
+  { id: 34, group:'F', home:'Países Bajos', away:'Suecia',       kickoff_arg:'20/06 14:00', venue:'Houston' },
+  { id: 35, group:'F', home:'Japón',        away:'Suecia',       kickoff_arg:'25/06 20:00', venue:'Dallas' },
+  { id: 36, group:'F', home:'Túnez',        away:'Países Bajos', kickoff_arg:'25/06 20:00', venue:'Kansas City' },
+  // ── GRUPO G ──────────────────────────────────────────────────────────
+  { id: 37, group:'G', home:'Bélgica',       away:'Egipto',        kickoff_arg:'15/06 16:00', venue:'Seattle' },
+  { id: 38, group:'G', home:'Irán',          away:'Nueva Zelanda', kickoff_arg:'15/06 22:00', venue:'Los Ángeles' },
+  { id: 39, group:'G', home:'Bélgica',       away:'Irán',          kickoff_arg:'21/06 16:00', venue:'Los Ángeles' },
+  { id: 40, group:'G', home:'Nueva Zelanda', away:'Egipto',        kickoff_arg:'21/06 22:00', venue:'Vancouver' },
+  { id: 41, group:'G', home:'Egipto',        away:'Irán',          kickoff_arg:'26/06 00:00', venue:'Seattle' },
+  { id: 42, group:'G', home:'Nueva Zelanda', away:'Bélgica',       kickoff_arg:'26/06 00:00', venue:'Vancouver' },
+  // ── GRUPO H ──────────────────────────────────────────────────────────
+  { id: 43, group:'H', home:'España',         away:'Cabo Verde',    kickoff_arg:'15/06 13:00', venue:'Atlanta' },
+  { id: 44, group:'H', home:'Arabia Saudita', away:'Uruguay',       kickoff_arg:'15/06 19:00', venue:'Miami' },
+  { id: 45, group:'H', home:'España',         away:'Arabia Saudita',kickoff_arg:'21/06 13:00', venue:'Atlanta' },
+  { id: 46, group:'H', home:'Uruguay',        away:'Cabo Verde',    kickoff_arg:'21/06 19:00', venue:'Miami' },
+  { id: 47, group:'H', home:'Cabo Verde',     away:'Arabia Saudita',kickoff_arg:'26/06 21:00', venue:'Houston' },
+  { id: 48, group:'H', home:'Uruguay',        away:'España',        kickoff_arg:'26/06 21:00', venue:'Guadalajara' },
+  // ── GRUPO I ──────────────────────────────────────────────────────────
+  { id: 49, group:'I', home:'Francia', away:'Senegal', kickoff_arg:'16/06 16:00', venue:'Nueva Jersey' },
+  { id: 50, group:'I', home:'Irak',    away:'Noruega', kickoff_arg:'16/06 19:00', venue:'Boston' },
+  { id: 51, group:'I', home:'Francia', away:'Irak',    kickoff_arg:'22/06 18:00', venue:'Philadelphia' },
+  { id: 52, group:'I', home:'Noruega', away:'Senegal', kickoff_arg:'22/06 21:00', venue:'Nueva Jersey' },
+  { id: 53, group:'I', home:'Noruega', away:'Francia', kickoff_arg:'26/06 16:00', venue:'Boston' },
+  { id: 54, group:'I', home:'Senegal', away:'Irak',    kickoff_arg:'26/06 16:00', venue:'Toronto' },
+  // ── GRUPO J ──────────────────────────────────────────────────────────
+  { id: 55, group:'J', home:'Argentina', away:'Argelia',   kickoff_arg:'16/06 22:00', venue:'Kansas City' },
+  { id: 56, group:'J', home:'Austria',   away:'Jordania',  kickoff_arg:'17/06 01:00', venue:'San Francisco' },
+  { id: 57, group:'J', home:'Argentina', away:'Austria',   kickoff_arg:'22/06 14:00', venue:'Dallas' },
+  { id: 58, group:'J', home:'Jordania',  away:'Argelia',   kickoff_arg:'22/06 23:00', venue:'San Francisco' },
+  { id: 59, group:'J', home:'Argelia',   away:'Austria',   kickoff_arg:'27/06 23:00', venue:'Kansas City' },
+  { id: 60, group:'J', home:'Jordania',  away:'Argentina', kickoff_arg:'27/06 23:00', venue:'Dallas' },
+  // ── GRUPO K ──────────────────────────────────────────────────────────
+  { id: 61, group:'K', home:'Portugal',   away:'RD Congo',   kickoff_arg:'17/06 14:00', venue:'Houston' },
+  { id: 62, group:'K', home:'Uzbekistán', away:'Colombia',   kickoff_arg:'17/06 23:00', venue:'Ciudad de México' },
+  { id: 63, group:'K', home:'Portugal',   away:'Uzbekistán', kickoff_arg:'23/06 14:00', venue:'Houston' },
+  { id: 64, group:'K', home:'Colombia',   away:'RD Congo',   kickoff_arg:'23/06 23:00', venue:'Guadalajara' },
+  { id: 65, group:'K', home:'Colombia',   away:'Portugal',   kickoff_arg:'27/06 20:30', venue:'Miami' },
+  { id: 66, group:'K', home:'RD Congo',   away:'Uzbekistán', kickoff_arg:'27/06 20:30', venue:'Atlanta' },
+  // ── GRUPO L ──────────────────────────────────────────────────────────
+  { id: 67, group:'L', home:'Inglaterra', away:'Croacia',   kickoff_arg:'17/06 17:00', venue:'Dallas' },
+  { id: 68, group:'L', home:'Ghana',      away:'Panamá',    kickoff_arg:'17/06 20:00', venue:'Toronto' },
+  { id: 69, group:'L', home:'Inglaterra', away:'Ghana',     kickoff_arg:'23/06 17:00', venue:'Boston' },
+  { id: 70, group:'L', home:'Panamá',     away:'Croacia',   kickoff_arg:'23/06 20:00', venue:'Toronto' },
+  { id: 71, group:'L', home:'Croacia',    away:'Ghana',     kickoff_arg:'27/06 18:00', venue:'Philadelphia' },
+  { id: 72, group:'L', home:'Panamá',     away:'Inglaterra',kickoff_arg:'27/06 18:00', venue:'Nueva Jersey' },
+];

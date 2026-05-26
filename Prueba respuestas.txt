@@ -1,0 +1,37 @@
+function insertarRespuestaPrueba() {
+  var ss        = SpreadsheetApp.getActiveSpreadsheet();
+  var respSheet = null;
+  var allSheets = ss.getSheets();
+  for (var i = 0; i < allSheets.length; i++) {
+    if (allSheets[i].getName().indexOf("Form Responses") !== -1) {
+      respSheet = allSheets[i]; break;
+    }
+  }
+  if (!respSheet) { Browser.msgBox("No se encontro el tab de respuestas."); return; }
+
+  var headers  = respSheet.getRange(1, 1, 1, respSheet.getLastColumn()).getValues()[0];
+  var lastRow  = respSheet.getLastRow() + 1;
+  var numCols  = headers.length;
+
+  // Forzar formato texto en toda la fila nueva ANTES de escribir
+  respSheet.getRange(lastRow, 1, 1, numCols).setNumberFormat("@");
+
+  // Armar la fila
+  var fila = [];
+  for (var c = 0; c < headers.length; c++) {
+    var h = headers[c].toString();
+    if (c === 0)                              fila.push(Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "M/d/yyyy H:mm:ss"));
+    else if (h === "Nombre y Apellido")       fila.push("Jugador Test");
+    else if (h.indexOf("Campeon") !== -1)     fila.push("Argentina");
+    else if (h.indexOf("Subcampeon") !== -1)  fila.push("Francia");
+    else if (h.indexOf("Tercer") !== -1)      fila.push("Brasil");
+    else if (h.indexOf("Goleador") !== -1)    fila.push("Messi");
+    else if (h.indexOf("Decepcion") !== -1)   fila.push("Francia");
+    else if (h.indexOf("Revelacion") !== -1)  fila.push("Marruecos");
+    else                                      fila.push("2-1");
+  }
+
+  // Escribir con setValues (no appendRow) para respetar el formato texto
+  respSheet.getRange(lastRow, 1, 1, numCols).setValues([fila]);
+  Browser.msgBox("Respuesta de prueba insertada en fila " + lastRow + "!");
+}

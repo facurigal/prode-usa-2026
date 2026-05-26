@@ -1,0 +1,125 @@
+function calcularPuntajes() {
+  var ss          = SpreadsheetApp.getActiveSpreadsheet();
+  var rankSheet   = ss.getSheetByName("RANKING");
+  var fixSheet    = ss.getSheetByName("FIXTURE GRUPOS");
+
+  // Encontrar el tab de respuestas automáticamente
+  var respSheet = null;
+  var allSheets = ss.getSheets();
+  for (var i = 0; i < allSheets.length; i++) {
+    if (allSheets[i].getName().indexOf("Form Responses") !== -1) {
+      respSheet = allSheets[i];
+      break;
+    }
+  }
+  if (!respSheet) { Browser.msgBox("No se encontro el tab de respuestas del form."); return; }
+
+  // ── 1. Leer resultados reales de FIXTURE GRUPOS ───────────────────
+  // Cols: A=Partido B=Fecha C=Hora D=Grupo E=Local F=Visitante G=GolesLocal H=GolesVisitante
+  var fixData = fixSheet.getRange(2, 1, 72, 8).getValues();
+  var resultados = {};  // key: "EquipoA|EquipoB" (sorted) → [golesA, golesB]
+  var jugados = 0;
+
+  for (var r = 0; r < fixData.length; r++) {
+    var local      = fixData[r][4];
+    var visitante  = fixData[r][5];
+    var golesLocal = fixData[r][6];
+    var golesVis   = fixData[r][7];
+    if (golesLocal === "" || golesVis === "" || golesLocal === null) continue;
+
+    var sorted = [local, visitante].sort();
+    var key    = sorted[0] + "|" + sorted[1];
+    var golesA = (local === sorted[0]) ? Number(golesLocal) : Number(golesVis);
+    var golesB = (local === sorted[0]) ? Number(golesVis)   : Number(golesLocal);
+    resultados[key] = [golesA, golesB, sorted[0], sorted[1]];
+    jugados++;
+  }
+
+  // ── 2. Leer respuestas del form ───────────────────────────────────
+  var respData = respSheet.getDataRange().getValues();
+  var headers  = respData[0];
+
+  // Mapear columnas de partidos (índices 8-79)
+  var matchCols = [];
+  for (var c = 8; c < headers.length; c++) {
+    var h      = headers[c].toString();
+    var vsIdx  = h.indexOf(" vs ");
+    if (vsIdx === -1) continue;
+    var dotIdx = h.indexOf("· ") + 2;
+    var loc    = h.substring(dotIdx, vsIdx).trim();
+    var vis    = h.substring(vsIdx + 4).trim();
+    matchCols.push({ col: c, local: loc, visitante: vis });
+  }
+
+  // ── 3. Calcular puntos por participante ───────────────────────────
+  var participantes = [];
+
+  for (var row = 1; row < respData.length; row++) {
+    var resp = respData[row];
+    if (!resp[1]) continue;
+
+    var nombre  = resp[1].toString().trim();
+    var pts     = 0;
+    var exactos = 0;
+    var ganador = 0;
+
+    for (var m = 0; m < matchCols.length; m++) {
+      var mc         = matchCols[m];
+      var prediction = resp[mc.col] ? resp[mc.col].toString().trim() : "";
+      if (!prediction) continue;
+
+      var parts = prediction.split("-");
+      if (parts.length !== 2) continue;
+      var predLoc = parseInt(parts[0].trim());
+      var predVis = parseInt(parts[1].trim());
+      if (isNaN(predLoc) || isNaN(predVis)) continue;
+
+      var sorted2 = [mc.local, mc.visitante].sort();
+      var key2    = sorted2[0] + "|" + sorted2[1];
+      if (!resultados[key2]) continue;  // partido no jugado aún
+
+      var res       = resultados[key2];
+      // Mapear predicción a orden sorted
+      var predA = (mc.local === res[2]) ? predLoc : predVis;
+      var predB = (mc.local === res[2]) ? predVis : predLoc;
+      var realA = res[0];
+      var realB = res[1];
+
+      if (predA === realA && predB === realB) {
+        pts += 5; exactos++;
+      } else {
+        var predWin = predA > predB ? 1 : predA < predB ? -1 : 0;
+        var realWin = realA > realB ? 1 : realA < realB ? -1 : 0;
+        if (predWin === realWin) { pts += 2; ganador++; }
+      }
+    }
+
+    participantes.push({ nombre: nombre, pts: pts, exactos: exactos, ganador: ganador });
+  }
+
+  // Ordenar por puntos descendente
+  participantes.sort(function(a, b) { return b.pts - a.pts; });
+
+  // ── 4. Escribir en RANKING ────────────────────────────────────────
+  // Limpiar filas de datos (fila 2 en adelante, cols A y B + C)
+  rankSheet.getRange(2, 1, 20, 3).clearContent();
+
+  for (var p = 0; p < participantes.length && p < 20; p++) {
+    var d       = participantes[p];
+    var sheetR  = p + 2;
+    rankSheet.getRange(sheetR, 1).setValue(p + 1);       // Pos
+    rankSheet.getRange(sheetR, 2).setValue(d.nombre);    // Nombre
+    rankSheet.getRange(sheetR, 3).setValue(d.pts);       // Pts Grupos
+  }
+
+  // Resumen
+  var resumen = "Puntajes actualizados!\n\n";
+  resumen += "Partidos con resultado: " + jugados + "/72\n";
+  resumen += "Participantes: " + participantes.length + "\n\n";
+  for (var pp = 0; pp < participantes.length; pp++) {
+    var d2 = participantes[pp];
+    resumen += (pp+1) + ". " + d2.nombre + " → " + d2.pts + " pts";
+    resumen += " (" + d2.exactos + " exactos, " + d2.ganador + " ganador)\n";
+  }
+  Browser.msgBox(resumen);
+}

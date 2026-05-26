@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prode Mundial USA 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family: 'Inter', sans-serif; background: #0a0e1a; }
+  h1 { font-family: 'Bebas Neue', sans-serif; }
+  .btn { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(251,191,36,0.35); }
+  .btn:active { transform: translateY(0); }
+</style>
+</head>
+<body class="min-h-screen flex items-center justify-center px-4"
+      style="background: radial-gradient(ellipse at 60% 0%, #1a2a4a 0%, #0a0e1a 70%);">
+
+<div class="w-full max-w-md">
+  <!-- Logo / Header -->
+  <div class="text-center mb-10">
+    <div class="text-7xl mb-3">⚽</div>
+    <h1 class="text-5xl text-white tracking-wider mb-1">PRODE</h1>
+    <p class="text-yellow-400 text-xl font-semibold tracking-widest">MUNDIAL USA 2026</p>
+    <p class="text-slate-400 text-sm mt-2">Berlín Edition</p>
+  </div>
+
+  <!-- Login card -->
+  <div class="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-8 shadow-2xl">
+    <h2 class="text-white text-xl font-semibold mb-1">¿Cómo te llamás?</h2>
+    <p class="text-slate-400 text-sm mb-6">Ingresá tu nombre tal como aparecerá en el ranking.</p>
+
+    <form id="loginForm">
+      <input id="nameInput" type="text" placeholder="Nombre y Apellido"
+        class="w-full bg-white/10 border border-white/20 text-white placeholder-slate-500
+               rounded-xl px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-yellow-400 mb-4"
+        autocomplete="off" spellcheck="false" required>
+
+      <button type="submit"
+        class="btn w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold
+               rounded-xl py-3 text-base">
+        Entrar al Prode →
+      </button>
+    </form>
+
+    <p id="errorMsg" class="text-red-400 text-sm mt-3 hidden"></p>
+  </div>
+
+  <!-- Nav links -->
+  <div class="flex justify-center gap-6 mt-8 text-sm">
+    <a href="leaderboard.html" class="text-slate-400 hover:text-yellow-400 transition-colors">🏆 Ranking</a>
+    <a href="standings.html"   class="text-slate-400 hover:text-yellow-400 transition-colors">📊 Grupos</a>
+    <a href="playoffs.html"    class="text-slate-400 hover:text-yellow-400 transition-colors">⚡ Playoffs</a>
+  </div>
+</div>
+
+<script>
+  // If already logged in, redirect to predictions
+  const stored = localStorage.getItem('prode_user');
+  if (stored) {
+    try {
+      const u = JSON.parse(stored);
+      if (u.id && u.name) window.location.href = 'predictions.html';
+    } catch(e) { localStorage.removeItem('prode_user'); }
+  }
+
+  document.getElementById('loginForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = document.getElementById('nameInput').value.trim();
+    if (!name) return;
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const user = await res.json();
+      localStorage.setItem('prode_user', JSON.stringify(user));
+      window.location.href = 'predictions.html';
+    } catch(err) {
+      const el = document.getElementById('errorMsg');
+      el.textContent = 'Error al conectar. Intentá de nuevo.';
+      el.classList.remove('hidden');
+    }
+  });
+</script>
+</body>
+</html>

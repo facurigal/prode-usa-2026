@@ -1,0 +1,130 @@
+function calcularEspeciales() {
+  var ss        = SpreadsheetApp.getActiveSpreadsheet();
+  var espSheet  = ss.getSheetByName("PUNTOS ESPECIALES");
+  var rankSheet = ss.getSheetByName("RANKING");
+
+  if (!espSheet) { Browser.msgBox("No encontre el tab 'PUNTOS ESPECIALES'. Verificá el nombre exacto."); return; }
+
+  // ── 1. Leer resultados reales (filas 2-7, cols A y B) ─────────────
+  // Estructura: A=categoria, B=resultado real
+  var espData = espSheet.getRange(2, 1, 6, 2).getValues();
+  var reales = {
+    campeon:    espData[0][1].toString().trim().toLowerCase(),
+    subcampeon: espData[1][1].toString().trim().toLowerCase(),
+    tercero:    espData[2][1].toString().trim().toLowerCase(),
+    goleador:   espData[3][1].toString().trim().toLowerCase(),
+    decepcion:  espData[4][1].toString().trim().toLowerCase(),
+    revelacion: espData[5][1].toString().trim().toLowerCase()
+  };
+
+  // Decepcion y Revelacion pueden tener múltiples valores separados por coma
+  var decepciones  = reales.decepcion  ? reales.decepcion.split(",").map(function(s){return s.trim();})  : [];
+  var revelaciones = reales.revelacion ? reales.revelacion.split(",").map(function(s){return s.trim();}) : [];
+
+  // ── 2. Leer tabla BONUS TRACK ─────────────────────────────────────
+  // Buscar la fila que diga "BONUS TRACK" en col A
+  var allData = espSheet.getDataRange().getValues();
+  var bonusStartRow = -1;
+  for (var r = 0; r < allData.length; r++) {
+    if (allData[r][0].toString().toUpperCase().indexOf("BONUS TRACK") !== -1) {
+      bonusStartRow = r + 1; // la siguiente fila es el encabezado de columnas
+      break;
+    }
+  }
+
+  // Leer totales de bonus por participante {nombre_lower: total_pts}
+  var bonusTotals = {};
+  if (bonusStartRow >= 0) {
+    var headerRow = allData[bonusStartRow];
+    // Buscar columna TOTAL
+    var totalCol = -1;
+    for (var c = 0; c < headerRow.length; c++) {
+      if (headerRow[c].toString().toUpperCase() === "TOTAL") { totalCol = c; break; }
+    }
+    // Leer filas de participantes
+    for (var br = bonusStartRow + 1; br < allData.length; br++) {
+      var bNombre = allData[br][0].toString().trim();
+      if (!bNombre) continue;
+      var bTotal = (totalCol >= 0) ? (Number(allData[br][totalCol]) || 0) : 0;
+      bonusTotals[bNombre.toLowerCase()] = bTotal;
+    }
+  }
+
+  // ── 3. Leer respuestas del form ───────────────────────────────────
+  var respSheet = null;
+  var allSheets = ss.getSheets();
+  for (var i = 0; i < allSheets.length; i++) {
+    if (allSheets[i].getName().indexOf("Form Responses") !== -1) {
+      respSheet = allSheets[i]; break;
+    }
+  }
+  if (!respSheet) { Browser.msgBox("No se encontro el tab de respuestas del form."); return; }
+
+  var respData = respSheet.getDataRange().getValues();
+  // Cols: 0=timestamp, 1=nombre, 2=campeon, 3=sub, 4=tercero, 5=goleador, 6=decepcion, 7=revelacion
+
+  var PUNTOS = { campeon: 15, subcampeon: 10, tercero: 5, goleador: 7, decepcion: 7, revelacion: 7 };
+
+  // Calcular puntos especiales por participante
+  var scores = {};
+  for (var row = 1; row < respData.length; row++) {
+    var resp = respData[row];
+    if (!resp[1]) continue;
+
+    var nombre = resp[1].toString().trim();
+    var s = { campeon: 0, subcampeon: 0, tercero: 0, goleador: 0, decepcion: 0, revelacion: 0, bonus: 0 };
+
+    var predC  = resp[2].toString().trim().toLowerCase();
+    var predS  = resp[3].toString().trim().toLowerCase();
+    var predT  = resp[4].toString().trim().toLowerCase();
+    var predG  = resp[5].toString().trim().toLowerCase();
+    var predD  = resp[6].toString().trim().toLowerCase();
+    var predR  = resp[7].toString().trim().toLowerCase();
+
+    if (reales.campeon    && predC === reales.campeon)                    s.campeon    = PUNTOS.campeon;
+    if (reales.subcampeon && predS === reales.subcampeon)                 s.subcampeon = PUNTOS.subcampeon;
+    if (reales.tercero    && predT === reales.tercero)                    s.tercero    = PUNTOS.tercero;
+    if (reales.goleador   && predG === reales.goleador)                   s.goleador   = PUNTOS.goleador;
+    if (decepciones.length  && decepciones.indexOf(predD)  !== -1)        s.decepcion  = PUNTOS.decepcion;
+    if (revelaciones.length && revelaciones.indexOf(predR) !== -1)        s.revelacion = PUNTOS.revelacion;
+
+    s.bonus = bonusTotals[nombre.toLowerCase()] || 0;
+    scores[nombre] = s;
+  }
+
+  // ── 4. Escribir en RANKING ────────────────────────────────────────
+  // Cols: A=#, B=Nombre, C=PtsGrupos, D-H=Playoffs, I=Campeon, J=Sub, K=3ro, L=Goleador, M=Dec, N=Rev, O=Bonus
+  var rankData = rankSheet.getDataRange().getValues();
+  var updated = 0;
+
+  for (var rr = 1; rr < rankData.length; rr++) {
+    var rNombre = rankData[rr][1].toString().trim();
+    if (!rNombre) continue;
+    var s2 = scores[rNombre];
+    if (!s2) continue;
+
+    var sheetRow = rr + 1;
+    rankSheet.getRange(sheetRow, 9).setValue(s2.campeon);
+    rankSheet.getRange(sheetRow, 10).setValue(s2.subcampeon);
+    rankSheet.getRange(sheetRow, 11).setValue(s2.tercero);
+    rankSheet.getRange(sheetRow, 12).setValue(s2.goleador);
+    rankSheet.getRange(sheetRow, 13).setValue(s2.decepcion);
+    rankSheet.getRange(sheetRow, 14).setValue(s2.revelacion);
+    rankSheet.getRange(sheetRow, 15).setValue(s2.bonus);
+    updated++;
+  }
+
+  // Resumen
+  var msg = "Especiales actualizados! (" + updated + " participantes)\n\n";
+  msg += "Resultados cargados:\n";
+  msg += "Campeon:    " + (reales.campeon    || "— no cargado") + "\n";
+  msg += "Sub:        " + (reales.subcampeon || "— no cargado") + "\n";
+  msg += "3er Puesto: " + (reales.tercero    || "— no cargado") + "\n";
+  msg += "Goleador:   " + (reales.goleador   || "— no cargado") + "\n";
+  msg += "Decepcion:  " + (reales.decepcion  || "— no cargado") + "\n";
+  msg += "Revelacion: " + (reales.revelacion || "— no cargado") + "\n";
+  if (Object.keys(bonusTotals).length > 0) {
+    msg += "\nBonus cargados para: " + Object.keys(bonusTotals).join(", ");
+  }
+  Browser.msgBox(msg);
+}

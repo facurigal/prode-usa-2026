@@ -1,0 +1,4 @@
+node_modules/
+prode.db
+*.db-journal
+.env

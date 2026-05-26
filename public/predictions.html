@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Pronósticos — Prode 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family:'Inter',sans-serif; background:#0a0e1a; }
+  h1,h2 { font-family:'Bebas Neue',sans-serif; }
+  .score-input {
+    width:3rem; text-align:center; background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.15); border-radius:0.5rem;
+    color:white; font-size:1.1rem; font-weight:600; padding:0.35rem 0;
+    transition: border-color 0.2s;
+  }
+  .score-input:focus { outline:none; border-color:#facc15; background:rgba(250,204,21,0.1); }
+  .score-input:disabled { opacity:0.35; cursor:not-allowed; }
+  .match-row { transition: background 0.2s; }
+  .match-row:hover:not(.locked) { background:rgba(255,255,255,0.04); }
+  .locked { opacity:0.6; }
+  .played { opacity:0.55; }
+  .tab-btn { transition: all 0.15s; }
+  .tab-btn.active { background:#facc15; color:#000; font-weight:700; }
+  .save-btn { transition: transform 0.12s, box-shadow 0.12s; }
+  .save-btn:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 20px rgba(250,204,21,0.3); }
+  .save-btn:active { transform:translateY(0); }
+  .flash { animation: flashGreen 1s ease; }
+  @keyframes flashGreen { 0%,100%{background:transparent} 50%{background:rgba(34,197,94,0.25)} }
+</style>
+</head>
+<body class="min-h-screen text-white" style="background:radial-gradient(ellipse at 60% 0%,#1a2a4a 0%,#0a0e1a 70%)">
+
+<!-- Top bar -->
+<header class="sticky top-0 z-50 bg-black/60 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <span class="text-2xl">⚽</span>
+    <div>
+      <h1 class="text-xl text-yellow-400 leading-none">PRODE 2026</h1>
+      <p class="text-slate-400 text-xs" id="userName"></p>
+    </div>
+  </div>
+  <nav class="flex gap-3 text-sm">
+    <a href="leaderboard.html" class="text-slate-300 hover:text-yellow-400 transition-colors">🏆 Ranking</a>
+    <a href="standings.html"   class="text-slate-300 hover:text-yellow-400 transition-colors">📊 Grupos</a>
+    <a href="playoffs.html"    class="text-slate-300 hover:text-yellow-400 transition-colors">⚡ Playoffs</a>
+    <a href="rules.html"       class="text-slate-300 hover:text-yellow-400 transition-colors">📋 Reglas</a>
+    <a href="index.html"       class="text-slate-500 hover:text-white transition-colors text-xs">Salir</a>
+  </nav>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-6">
+
+  <!-- Special picks banner -->
+  <div id="specialBanner" class="mb-6 bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="text-yellow-400 text-xl tracking-wider">PICKS ESPECIALES</h2>
+      <span class="text-xs text-slate-400">Antes del 11/06</span>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="specialForm">
+      <!-- Injected by JS -->
+    </div>
+    <button id="saveSpecials"
+      class="save-btn mt-4 w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl py-2.5 text-sm">
+      Guardar picks especiales
+    </button>
+    <p id="specialStatus" class="text-center text-sm mt-2"></p>
+  </div>
+
+  <!-- Bonus Tracks -->
+  <div id="bonusSection" class="mb-6 hidden">
+    <div class="flex items-center gap-2 mb-3">
+      <h2 class="text-yellow-400 text-xl tracking-wider">BONUS TRACKS</h2>
+      <span class="text-slate-500 text-xs">(2 pts c/u · máx 20 pts)</span>
+    </div>
+    <div id="bonusList" class="space-y-3"></div>
+  </div>
+
+  <!-- Group tabs -->
+  <div class="flex flex-wrap gap-2 mb-4" id="groupTabs"></div>
+
+  <!-- Matches panel -->
+  <div id="matchPanel" class="space-y-2"></div>
+
+  <p class="text-center text-slate-600 text-xs mt-8">Los pronósticos se bloquean automáticamente al inicio de cada partido.</p>
+</main>
+
+<script>
+const ALL_TEAMS = ["Alemania","Arabia Saudita","Argelia","Argentina","Australia","Austria","Bélgica","Bosnia y Herzegovina","Brasil","Cabo Verde","Canadá","Colombia","Corea del Sur","Costa de Marfil","Croacia","Curazao","Ecuador","EE.UU.","Egipto","Escocia","España","Francia","Ghana","Haití","Inglaterra","Irak","Irán","Japón","Jordania","Marruecos","México","Noruega","Nueva Zelanda","Países Bajos","Panamá","Paraguay","Portugal","Qatar","RD Congo","Rep. Checa","Senegal","Sudáfrica","Suecia","Suiza","Túnez","Turquía","Uruguay","Uzbekistán"];
+const DECEPCION_TEAMS = ["Alemania","Argentina","Bélgica","Brasil","Colombia","Croacia","EE.UU.","España","Francia","Inglaterra","México","Países Bajos","Portugal","Suiza","Uruguay"];
+const REVELACION_TEAMS = ["Arabia Saudita","Australia","Cabo Verde","Curazao","Ghana","Haití","Irak","Irán","Jordania","Nueva Zelanda","Panamá","Qatar","RD Congo","Sudáfrica","Túnez","Uzbekistán"];
+const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+
+// Auth guard
+const storedUser = localStorage.getItem('prode_user');
+if (!storedUser) window.location.href = 'index.html';
+const user = JSON.parse(storedUser);
+document.getElementById('userName').textContent = user.name;
+
+const socket = io();
+let allMatches = [];
+let activeGroup = 'A';
+let pendingSaves = {};
+let saveTimers = {};
+
+// ── Special picks ─────────────────────────────────────────────────────────────
+
+function makeSelect(id, label, options, helpText) {
+  const opts = options.map(o => `<option value="${o}">${o}</option>`).join('');
+  return `
+    <div>
+      <label class="text-xs text-slate-400 block mb-1">${label}</label>
+      ${helpText ? `<p class="text-xs text-slate-600 mb-1">${helpText}</p>` : ''}
+      <select id="${id}" class="w-full bg-white/8 border border-white/15 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-yellow-400" style="background:#1a2035">
+        <option value="">— elegir —</option>
+        ${opts}
+      </select>
+    </div>`;
+}
+
+function renderSpecialForm(existing) {
+  document.getElementById('specialForm').innerHTML =
+    makeSelect('sp_campeon',    'Campeón del Mundial (15 pts)', ALL_TEAMS) +
+    makeSelect('sp_subcampeon', 'Subcampeón (10 pts)', ALL_TEAMS) +
+    makeSelect('sp_tercero',    'Tercer Puesto (5 pts)', ALL_TEAMS) +
+    `<div>
+      <label class="text-xs text-slate-400 block mb-1">Goleador del torneo (7 pts)</label>
+      <input id="sp_goleador" type="text" placeholder="Nombre del jugador"
+        class="w-full bg-white/8 border border-white/15 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-yellow-400" style="background:#1a2035">
+    </div>` +
+    makeSelect('sp_decepcion',  'Decepción — equipo top que no pasa grupos (7 pts)', DECEPCION_TEAMS, 'Si hay más de una, todos los que acertaron cualquiera suman 7 pts.') +
+    makeSelect('sp_revelacion', 'Revelación — underdog que sí pasa grupos (7 pts)', REVELACION_TEAMS, 'Vale la que llegó más lejos si hay más de una.');
+
+  if (existing && existing.campeon) {
+    ['campeon','subcampeon','tercero','goleador','decepcion','revelacion'].forEach(k => {
+      const el = document.getElementById(`sp_${k}`);
+      if (el && existing[k]) el.value = existing[k];
+    });
+  }
+}
+
+async function loadSpecials() {
+  const [picksRes, lockRes] = await Promise.all([
+    fetch(`/api/special-picks?user_id=${user.id}`),
+    fetch('/api/settings/special-picks-locked')
+  ]);
+  const data = await picksRes.json();
+  const { locked } = await lockRes.json();
+  renderSpecialForm(data);
+  applySpecialsLock(locked);
+}
+
+function applySpecialsLock(locked) {
+  const form = document.getElementById('specialBanner');
+  const btn = document.getElementById('saveSpecials');
+  form.querySelectorAll('select, input').forEach(el => el.disabled = locked);
+  btn.disabled = locked;
+  btn.textContent = locked ? '🔒 Picks bloqueados por el admin' : 'Guardar picks especiales';
+  btn.className = locked
+    ? 'mt-4 w-full bg-slate-700 text-slate-400 font-bold rounded-xl py-2.5 text-sm cursor-not-allowed'
+    : 'save-btn mt-4 w-full bg-yellow-400 hover:bg-yellow-300 text-black font-bold rounded-xl py-2.5 text-sm';
+}
+
+document.getElementById('saveSpecials').addEventListener('click', async () => {
+  const picks = {
+    campeon:    document.getElementById('sp_campeon').value,
+    subcampeon: document.getElementById('sp_subcampeon').value,
+    tercero:    document.getElementById('sp_tercero').value,
+    goleador:   document.getElementById('sp_goleador').value,
+    decepcion:  document.getElementById('sp_decepcion').value,
+    revelacion: document.getElementById('sp_revelacion').value,
+  };
+  const status = document.getElementById('specialStatus');
+  const res = await fetch('/api/special-picks', {
+    method: 'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ user_id: user.id, ...picks })
+  });
+  if (res.ok) {
+    status.textContent = '✓ Picks guardados';
+    status.className = 'text-center text-sm mt-2 text-green-400';
+  } else {
+    status.textContent = '✗ Error al guardar';
+    status.className = 'text-center text-sm mt-2 text-red-400';
+  }
+  setTimeout(() => status.textContent = '', 3000);
+});
+
+// ── Group tabs ────────────────────────────────────────────────────────────────
+
+function renderTabs() {
+  const container = document.getElementById('groupTabs');
+  container.innerHTML = GROUPS.map(g => {
+    const matches = allMatches.filter(m => m.grp === g);
+    const done = matches.filter(m => m.pred_home !== null).length;
+    const locked = matches.every(m => m.status !== 'upcoming');
+    const badge = locked ? '🔒' : `${done}/${matches.length}`;
+    return `<button onclick="switchGroup('${g}')"
+      class="tab-btn px-3 py-1.5 rounded-lg text-sm border border-white/15 text-slate-300 ${g===activeGroup?'active':'hover:border-yellow-400/40'}"
+      id="tab-${g}">
+      <span class="font-semibold">G${g}</span>
+      <span class="text-xs ml-1 opacity-70">${badge}</span>
+    </button>`;
+  }).join('');
+}
+
+function switchGroup(g) {
+  activeGroup = g;
+  renderTabs();
+  renderMatches();
+}
+
+// ── Matches ───────────────────────────────────────────────────────────────────
+
+function renderMatches() {
+  const matches = allMatches.filter(m => m.grp === activeGroup && m.stage === 'group');
+  const container = document.getElementById('matchPanel');
+
+  if (!matches.length) { container.innerHTML = '<p class="text-slate-500 text-center py-8">No hay partidos en este grupo.</p>'; return; }
+
+  container.innerHTML = matches.map(m => {
+    const isLocked = m.status !== 'upcoming' || groupsGloballyLocked;
+    const hasResult = m.status === 'played';
+    const rowClass = hasResult ? 'played' : (isLocked ? 'locked' : '');
+    const pts = m.points != null ? `<span class="text-yellow-400 font-bold text-sm">${m.points} pts</span>` : '';
+    const result = hasResult ? `<span class="text-slate-400 text-xs">(${m.score_home}-${m.score_away})</span>` : '';
+    const lockBadge = isLocked ? `<span class="text-xs ${hasResult?'text-slate-500':'text-orange-400'}">
+      ${hasResult ? '✓ Jugado' : '🔒 Cerrado'}</span>` : '';
+
+    return `
+    <div class="match-row ${rowClass} bg-white/4 border border-white/8 rounded-xl px-4 py-3 flex items-center gap-3" id="match-${m.id}">
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-white font-medium text-sm">${m.team_home}</span>
+          <span class="text-slate-500 text-xs">vs</span>
+          <span class="text-white font-medium text-sm">${m.team_away}</span>
+          ${result}
+        </div>
+        <div class="text-slate-500 text-xs mt-0.5 flex items-center gap-2">
+          <span>${m.kickoff_arg}</span>
+          <span>·</span><span>${m.venue || ''}</span>
+          ${lockBadge}
+        </div>
+      </div>
+      <div class="flex items-center gap-2 shrink-0">
+        ${pts}
+        <input type="number" min="0" max="20" class="score-input"
+          id="ph-${m.id}" value="${m.pred_home ?? ''}" placeholder="–"
+          ${isLocked ? 'disabled' : ''} onchange="queueSave(${m.id})">
+        <span class="text-slate-400 text-sm font-bold">-</span>
+        <input type="number" min="0" max="20" class="score-input"
+          id="pa-${m.id}" value="${m.pred_away ?? ''}" placeholder="–"
+          ${isLocked ? 'disabled' : ''} onchange="queueSave(${m.id})">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function queueSave(matchId) {
+  clearTimeout(saveTimers[matchId]);
+  saveTimers[matchId] = setTimeout(() => autoSave(matchId), 800);
+}
+
+async function autoSave(matchId) {
+  const ph = document.getElementById(`ph-${matchId}`);
+  const pa = document.getElementById(`pa-${matchId}`);
+  if (!ph || !pa || ph.value === '' || pa.value === '') return;
+
+  const res = await fetch('/api/predictions', {
+    method: 'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ user_id:user.id, match_id:matchId, pred_home:+ph.value, pred_away:+pa.value })
+  });
+  if (res.ok) {
+    const row = document.getElementById(`match-${matchId}`);
+    if (row) { row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'),1000); }
+    // Update local data
+    const m = allMatches.find(x => x.id === matchId);
+    if (m) { m.pred_home = +ph.value; m.pred_away = +pa.value; }
+    renderTabs();
+  }
+}
+
+// ── Bonus Tracks ──────────────────────────────────────────────────────────────
+
+function renderBonusTracks(tracks) {
+  const section = document.getElementById('bonusSection');
+  const list = document.getElementById('bonusList');
+  if (!tracks.length) { section.classList.add('hidden'); return; }
+  section.classList.remove('hidden');
+
+  list.innerHTML = tracks.map(t => {
+    const isOpen = t.status === 'open';
+    const isResolved = t.status === 'resolved';
+    const answered = t.my_answer != null;
+    const correct = isResolved && t.my_answer && t.my_answer.toLowerCase().trim() === t.correct_answer.toLowerCase().trim();
+
+    const statusPill = isOpen
+      ? `<span class="text-xs text-green-400 bg-green-400/10 px-2 py-0.5 rounded-full">Abierta</span>`
+      : isResolved
+        ? `<span class="text-xs text-slate-400 bg-white/5 px-2 py-0.5 rounded-full">Resuelta</span>`
+        : `<span class="text-xs text-orange-400 bg-orange-400/10 px-2 py-0.5 rounded-full">Cerrada</span>`;
+
+    const inputDisabled = bonusGloballyLocked;
+    const answerBlock = isOpen
+      ? `<div class="flex gap-2 mt-2">
+           <input type="text" id="ba-${t.id}" value="${t.my_answer ?? ''}"
+             placeholder="${inputDisabled ? 'Bloqueado por el admin' : 'Tu respuesta...'}"
+             class="flex-1 bg-white/8 border border-white/15 text-white rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-yellow-400" style="background:#1a2035"
+             ${inputDisabled ? 'disabled' : ''}>
+           <button onclick="submitBonus(${t.id})" ${inputDisabled ? 'disabled' : ''}
+             class="${inputDisabled ? 'bg-slate-700 text-slate-500 cursor-not-allowed' : 'bg-yellow-400 hover:bg-yellow-300 text-black'} font-bold text-xs px-3 py-1.5 rounded-lg transition-colors">
+             ${answered ? 'Actualizar' : 'Responder'}
+           </button>
+         </div>
+         <p id="bs-${t.id}" class="text-xs mt-1"></p>`
+      : isResolved
+        ? `<div class="mt-2 flex flex-wrap gap-3 text-xs">
+             <span class="text-slate-400">Respuesta correcta: <strong class="text-white">${t.correct_answer}</strong></span>
+             ${answered
+               ? `<span class="${correct ? 'text-green-400' : 'text-red-400'}">
+                    Tu respuesta: <strong>${t.my_answer}</strong> ${correct ? '✓ +2 pts' : '✗ 0 pts'}
+                  </span>`
+               : `<span class="text-slate-600">No respondiste</span>`}
+           </div>`
+        : answered
+          ? `<p class="text-xs text-slate-400 mt-1">Tu respuesta: <strong class="text-white">${t.my_answer}</strong></p>`
+          : `<p class="text-xs text-slate-600 mt-1">Cerrada — no respondiste</p>`;
+
+    return `
+    <div class="bg-white/4 border border-white/8 rounded-xl px-4 py-3" id="bt-${t.id}">
+      <div class="flex items-start justify-between gap-2">
+        <div class="flex-1">
+          <div class="flex items-center gap-2 mb-1">
+            <span class="text-yellow-400 font-bold text-xs">#${t.question_number}</span>
+            ${statusPill}
+            <span class="text-slate-600 text-xs">· hasta ${t.deadline_arg}</span>
+          </div>
+          <p class="text-white text-sm font-medium">${t.question_text}</p>
+        </div>
+        ${isResolved && answered ? `<span class="text-yellow-400 font-bold text-sm shrink-0">${t.my_points ?? 0} pts</span>` : ''}
+      </div>
+      ${answerBlock}
+    </div>`;
+  }).join('');
+}
+
+async function submitBonus(trackId) {
+  const input = document.getElementById(`ba-${trackId}`);
+  const status = document.getElementById(`bs-${trackId}`);
+  if (!input || !input.value.trim()) return;
+  const res = await fetch('/api/bonus-answers', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ user_id: user.id, bonus_track_id: trackId, answer: input.value.trim() })
+  });
+  if (res.ok) {
+    status.textContent = '✓ Guardado';
+    status.className = 'text-xs mt-1 text-green-400';
+  } else {
+    const err = await res.json();
+    status.textContent = '✗ ' + (err.error || 'Error');
+    status.className = 'text-xs mt-1 text-red-400';
+  }
+  setTimeout(() => { if (status) status.textContent = ''; }, 3000);
+}
+
+let bonusGloballyLocked = false;
+
+async function loadBonusTracks() {
+  const [tracksRes, lockRes] = await Promise.all([
+    fetch(`/api/bonus-tracks?user_id=${user.id}`),
+    fetch('/api/settings/bonus-answers-locked')
+  ]);
+  bonusGloballyLocked = (await lockRes.json()).locked;
+  renderBonusTracks(await tracksRes.json());
+}
+
+function applyBonusLock(locked) {
+  bonusGloballyLocked = locked;
+  document.querySelectorAll('#bonusList input[type=text]').forEach(el => el.disabled = locked);
+  document.querySelectorAll('#bonusList button').forEach(el => el.disabled = locked);
+}
+
+// ── Socket.IO ─────────────────────────────────────────────────────────────────
+
+socket.on('bonus:new',     () => loadBonusTracks());
+socket.on('bonus:updated', () => loadBonusTracks());
+socket.on('specials:lock', ({ locked }) => applySpecialsLock(locked));
+socket.on('groups:lock',   ({ locked }) => applyGroupsLock(locked));
+socket.on('bonus:lock',    ({ locked }) => applyBonusLock(locked));
+
+socket.on('match:locked', ({ match_id }) => {
+  const m = allMatches.find(x => x.id === match_id);
+  if (m) { m.status = 'locked'; }
+  if (allMatches.filter(x=>x.grp===activeGroup).some(x=>x.id===match_id)) renderMatches();
+  renderTabs();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+let groupsGloballyLocked = false;
+
+function applyGroupsLock(locked) {
+  groupsGloballyLocked = locked;
+  renderMatches();
+}
+
+async function loadMatches() {
+  const [matchRes, lockRes] = await Promise.all([
+    fetch(`/api/matches?user_id=${user.id}`),
+    fetch('/api/settings/group-predictions-locked')
+  ]);
+  allMatches = await matchRes.json();
+  const { locked } = await lockRes.json();
+  groupsGloballyLocked = locked;
+  renderTabs();
+  renderMatches();
+}
+
+loadMatches();
+loadSpecials();
+loadBonusTracks();
+</script>
+</body>
+</html>

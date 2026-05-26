@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Playoffs — Prode 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family:'Inter',sans-serif; background:#0a0e1a; }
+  h1,h2 { font-family:'Bebas Neue',sans-serif; }
+  .score-input { width:3rem; text-align:center; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:0.5rem; color:white; font-size:1.1rem; font-weight:600; padding:0.35rem 0; transition: border-color 0.2s; }
+  .score-input:focus { outline:none; border-color:#facc15; }
+  .score-input:disabled { opacity:0.35; cursor:not-allowed; }
+  select { background:#1a2035; border:1px solid rgba(255,255,255,0.15); color:white; border-radius:0.5rem; padding:0.3rem 0.6rem; font-size:0.85rem; }
+  select:disabled { opacity:0.35; }
+  .match-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:0.75rem; padding:0.75rem 1rem; }
+  .flash { animation: flashG 1s ease; }
+  @keyframes flashG { 0%,100%{background:transparent} 50%{background:rgba(34,197,94,0.2)} }
+</style>
+</head>
+<body class="min-h-screen text-white" style="background:radial-gradient(ellipse at 60% 0%,#1a2a4a 0%,#0a0e1a 70%)">
+
+<header class="sticky top-0 z-50 bg-black/60 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <a href="predictions.html" class="text-slate-400 hover:text-white mr-1">←</a>
+    <span class="text-2xl">⚡</span>
+    <h1 class="text-xl text-yellow-400">PLAYOFFS</h1>
+  </div>
+  <nav class="flex gap-4 text-sm">
+    <a href="leaderboard.html" class="text-slate-300 hover:text-yellow-400">🏆 Ranking</a>
+    <a href="predictions.html" class="text-slate-300 hover:text-yellow-400">⚽ Grupos</a>
+    <a href="rules.html" class="text-slate-300 hover:text-yellow-400">📋 Reglas</a>
+  </nav>
+</header>
+
+<main class="max-w-3xl mx-auto px-4 py-6">
+  <p class="text-slate-400 text-sm mb-6">Los partidos de playoffs se desbloquean ronda por ronda. Indicá el score al 90' y, si hubo penales, quién ganó.</p>
+
+  <div id="playoffContent">
+    <div class="text-slate-500 text-center py-12">Cargando...</div>
+  </div>
+</main>
+
+<script>
+const storedUser = localStorage.getItem('prode_user');
+if (!storedUser) window.location.href = 'index.html';
+const user = JSON.parse(storedUser);
+
+const socket = io();
+const STAGE_LABELS = { r32:'Round of 32', r16:'Round of 16', qf:'Cuartos de Final', sf:'Semifinal', final:'FINAL', third:'3er Puesto' };
+const STAGE_ORDER = ['r32','r16','qf','sf','final','third'];
+
+let saveTimers = {};
+
+function renderPlayoffs(data) {
+  const el = document.getElementById('playoffContent');
+  const stages = STAGE_ORDER.filter(s => data[s] && data[s].length);
+
+  if (!stages.length) {
+    el.innerHTML = '<div class="text-center py-16"><p class="text-4xl mb-3">⏳</p><p class="text-slate-400">Los playoffs todavía no comenzaron.</p><p class="text-slate-600 text-sm mt-1">Volvé cuando terminen los grupos.</p></div>';
+    return;
+  }
+
+  el.innerHTML = stages.map(stage => {
+    const matches = data[stage];
+    const rows = matches.map(m => {
+      const locked = m.status !== 'upcoming';
+      const played = m.status === 'played';
+      const pts = m.points != null ? `<span class="text-yellow-400 font-bold text-sm ml-2">${m.points} pts</span>` : '';
+      const result = played ? `<span class="text-slate-400 text-xs">(${m.score_home}-${m.score_away}${m.went_to_pens?` P:${m.pens_winner==='home'?m.team_home:m.team_away}`:''} )</span>` : '';
+
+      return `
+      <div class="match-card mb-2" id="pm-${m.id}">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+          <div>
+            <span class="text-white font-medium">${m.team_home}</span>
+            <span class="text-slate-500 text-xs mx-2">vs</span>
+            <span class="text-white font-medium">${m.team_away}</span>
+            ${result}
+          </div>
+          <div class="flex items-center gap-2">
+            ${pts}
+            ${locked ? `<span class="text-xs ${played?'text-slate-500':'text-orange-400'}">${played?'✓ Jugado':'🔒'}</span>` : ''}
+          </div>
+        </div>
+        <div class="flex items-center flex-wrap gap-2">
+          <input type="number" min="0" max="20" class="score-input" id="pph-${m.id}"
+            value="${m.pred_home??''}" placeholder="–" ${locked?'disabled':''} onchange="queueSave(${m.id})">
+          <span class="text-slate-400 font-bold">-</span>
+          <input type="number" min="0" max="20" class="score-input" id="ppa-${m.id}"
+            value="${m.pred_away??''}" placeholder="–" ${locked?'disabled':''} onchange="queueSave(${m.id})">
+          <div class="flex items-center gap-1.5 ml-1">
+            <label class="text-xs text-slate-400">Si penales, ganó:</label>
+            <select id="ppw-${m.id}" ${locked?'disabled':''} onchange="queueSave(${m.id})">
+              <option value="">— sin pens —</option>
+              <option value="home" ${m.pred_pens_winner==='home'?'selected':''}>${m.team_home}</option>
+              <option value="away" ${m.pred_pens_winner==='away'?'selected':''}>${m.team_away}</option>
+            </select>
+          </div>
+        </div>
+        <p class="text-slate-600 text-xs mt-2">${m.kickoff_arg||''}</p>
+      </div>`;
+    }).join('');
+
+    return `<div class="mb-6"><h2 class="text-yellow-400 text-2xl mb-3">${STAGE_LABELS[stage]||stage}</h2>${rows}</div>`;
+  }).join('');
+}
+
+function queueSave(matchId) {
+  clearTimeout(saveTimers[matchId]);
+  saveTimers[matchId] = setTimeout(() => autoSave(matchId), 900);
+}
+
+async function autoSave(matchId) {
+  const ph  = document.getElementById(`pph-${matchId}`);
+  const pa  = document.getElementById(`ppa-${matchId}`);
+  const pw  = document.getElementById(`ppw-${matchId}`);
+  if (!ph || ph.value==='' || pa.value==='') return;
+
+  const res = await fetch('/api/playoff-predictions', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ user_id:user.id, match_id:matchId, pred_home:+ph.value, pred_away:+pa.value, pred_pens_winner: pw?.value||null })
+  });
+  if (res.ok) {
+    const row = document.getElementById(`pm-${matchId}`);
+    if (row) { row.classList.add('flash'); setTimeout(()=>row.classList.remove('flash'),1000); }
+  }
+}
+
+socket.on('match:locked', () => load());
+
+async function load() {
+  const res  = await fetch(`/api/playoffs?user_id=${user.id}`);
+  const data = await res.json();
+  renderPlayoffs(data);
+}
+
+load();
+</script>
+</body>
+</html>

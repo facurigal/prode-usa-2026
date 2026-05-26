@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tabla de Posiciones — Prode 2026</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap');
+  body { font-family:'Inter',sans-serif; background:#0a0e1a; }
+  h1,h2 { font-family:'Bebas Neue',sans-serif; }
+  .group-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); }
+  table { width:100%; border-collapse:collapse; }
+  td,th { padding:0.4rem 0.5rem; text-align:center; font-size:0.8rem; }
+  th { color:#64748b; font-weight:600; font-size:0.7rem; text-transform:uppercase; letter-spacing:0.05em; }
+  td:first-child, th:first-child { text-align:left; }
+  tr:not(:last-child) td { border-bottom:1px solid rgba(255,255,255,0.05); }
+  .pos-1 { background:rgba(250,204,21,0.08); }
+  .pos-2 { background:rgba(148,163,184,0.06); }
+  .qualifying { border-left:3px solid #22c55e; }
+</style>
+</head>
+<body class="min-h-screen text-white" style="background:radial-gradient(ellipse at 60% 0%,#1a2a4a 0%,#0a0e1a 70%)">
+
+<header class="sticky top-0 z-50 bg-black/60 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between">
+  <div class="flex items-center gap-3">
+    <a href="predictions.html" class="text-slate-400 hover:text-white mr-1">←</a>
+    <span class="text-2xl">📊</span>
+    <h1 class="text-xl text-yellow-400">TABLA DE POSICIONES</h1>
+  </div>
+  <nav class="flex gap-4 text-sm">
+    <a href="leaderboard.html" class="text-slate-300 hover:text-yellow-400 transition-colors">🏆 Ranking</a>
+    <a href="predictions.html" class="text-slate-300 hover:text-yellow-400 transition-colors">⚽ Pronósticos</a>
+    <a href="playoffs.html"    class="text-slate-300 hover:text-yellow-400 transition-colors">⚡ Playoffs</a>
+    <a href="rules.html"       class="text-slate-300 hover:text-yellow-400 transition-colors">📋 Reglas</a>
+  </nav>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6">
+  <p class="text-slate-500 text-xs mb-6 text-center">Se actualiza en tiempo real al ingresar resultados. 🟢 = clasifican al Round of 32.</p>
+
+  <div id="standingsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div class="text-slate-500 text-center col-span-3 py-12">Cargando...</div>
+  </div>
+</main>
+
+<script>
+const socket = io();
+
+function renderStandings(data) {
+  const groups = Object.keys(data).sort();
+  if (!groups.length) {
+    document.getElementById('standingsGrid').innerHTML = '<div class="text-slate-500 text-center col-span-3 py-12">Sin resultados aún.</div>';
+    return;
+  }
+
+  document.getElementById('standingsGrid').innerHTML = groups.map(g => {
+    const teams = data[g];
+    const rows = teams.map((t, i) => `
+      <tr class="${i < 2 ? 'qualifying' : ''} ${i===0?'pos-1':i===1?'pos-2':''}">
+        <td class="text-white font-medium pl-2">
+          <span class="text-slate-500 mr-1.5 text-xs">${i+1}</span>${t.name}
+        </td>
+        <td class="text-slate-300">${t.pj}</td>
+        <td class="text-green-400">${t.g}</td>
+        <td class="text-yellow-400">${t.e}</td>
+        <td class="text-red-400">${t.p}</td>
+        <td class="text-slate-300">${t.gf}:${t.gc}</td>
+        <td class="${t.dg>=0?'text-slate-300':'text-red-400'}">${t.dg>0?'+':''}${t.dg}</td>
+        <td class="text-white font-bold">${t.pts}</td>
+      </tr>`).join('');
+
+    return `
+    <div class="group-card rounded-xl overflow-hidden">
+      <div class="bg-yellow-400/10 px-3 py-2 border-b border-white/8">
+        <h2 class="text-yellow-400 text-lg tracking-wider">GRUPO ${g}</h2>
+      </div>
+      <div class="px-1 py-1">
+        <table>
+          <thead>
+            <tr><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>GF:GC</th><th>DG</th><th>Pts</th></tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function load() {
+  const res = await fetch('/api/standings');
+  renderStandings(await res.json());
+}
+
+socket.on('standings:updated', renderStandings);
+
+load();
+</script>
+</body>
+</html>
