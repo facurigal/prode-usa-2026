@@ -154,6 +154,12 @@ async function init() {
     });
     stmt.free();
     save();
+  } else {
+    // Sync kickoff times from fixture in case they were updated
+    const upd = db.prepare(`UPDATE matches SET kickoff_arg=?, venue=? WHERE id=? AND stage='group'`);
+    fixture.forEach(m => upd.run([m.kickoff_arg, m.venue, m.id]));
+    upd.free();
+    save();
   }
 
   return db;
