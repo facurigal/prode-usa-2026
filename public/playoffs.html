@@ -46,7 +46,22 @@
 <script>
 const storedUser = localStorage.getItem('prode_user');
 if (!storedUser) window.location.href = 'index.html';
-const user = JSON.parse(storedUser);
+let user = JSON.parse(storedUser);
+
+async function syncUser() {
+  try {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: user.name })
+    });
+    const fresh = await res.json();
+    if (fresh.id !== user.id) {
+      user = fresh;
+      localStorage.setItem('prode_user', JSON.stringify(fresh));
+    }
+  } catch(e) {}
+}
 
 const socket = io();
 const STAGE_LABELS = { r32:'Round of 32', r16:'Round of 16', qf:'Cuartos de Final', sf:'Semifinal', final:'FINAL', third:'3er Puesto' };
@@ -137,7 +152,7 @@ async function load() {
   renderPlayoffs(data);
 }
 
-load();
+syncUser().then(() => load());
 </script>
 </body>
 </html>

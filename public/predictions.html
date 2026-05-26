@@ -96,7 +96,7 @@ const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
 // Auth guard
 const storedUser = localStorage.getItem('prode_user');
 if (!storedUser) window.location.href = 'index.html';
-const user = JSON.parse(storedUser);
+let user = JSON.parse(storedUser);
 document.getElementById('userName').textContent = user.name;
 
 const socket = io();
@@ -104,6 +104,22 @@ let allMatches = [];
 let activeGroup = 'A';
 let pendingSaves = {};
 let saveTimers = {};
+
+// Re-sync user_id with server on every load (handles DB resets after redeploys)
+async function syncUser() {
+  try {
+    const res = await fetch('/api/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: user.name })
+    });
+    const fresh = await res.json();
+    if (fresh.id !== user.id) {
+      user = fresh;
+      localStorage.setItem('prode_user', JSON.stringify(fresh));
+    }
+  } catch(e) {}
+}
 
 // ── Special picks ─────────────────────────────────────────────────────────────
 
@@ -461,9 +477,11 @@ async function loadMatches() {
   renderMatches();
 }
 
-loadMatches();
-loadSpecials();
-loadBonusTracks();
+syncUser().then(() => {
+  loadMatches();
+  loadSpecials();
+  loadBonusTracks();
+});
 </script>
 </body>
 </html>
