@@ -122,6 +122,7 @@ async function init() {
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('special_picks_locked', '0')`);
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('group_predictions_locked', '0')`);
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bonus_answers_locked', '0')`);
+  db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_on_match_day', '0')`);
 
   db.run(`
     CREATE TABLE IF NOT EXISTS bonus_answers (
@@ -474,6 +475,23 @@ function createPlayoffMatch(stage, teamHome, teamAway, kickoffArg) {
   return db.exec(`SELECT last_insert_rowid() as id`)[0].values[0][0];
 }
 
+function lockMatchesForToday(dateStr) {
+  const rows = db.exec(
+    `SELECT id FROM matches WHERE status='upcoming' AND kickoff_arg LIKE ?`,
+    [dateStr + '%']
+  );
+  if (!rows.length || !rows[0].values.length) return [];
+  const ids = rows[0].values.map(([id]) => id);
+  ids.forEach(id => db.run(`UPDATE matches SET status='locked' WHERE id=?`, [id]));
+  save();
+  return ids;
+}
+
+function updateMatchKickoff(id, kickoffArg) {
+  db.run(`UPDATE matches SET kickoff_arg=? WHERE id=?`, [kickoffArg, id]);
+  save();
+}
+
 function deletePlayoffMatch(id) {
   db.run(`DELETE FROM predictions WHERE match_id=?`, [id]);
   db.run(`DELETE FROM matches WHERE id=? AND stage != 'group'`, [id]);
@@ -598,6 +616,7 @@ module.exports = {
   resolveSpecial, getSpecialActuals,
   createBonusTrack, updateBonusTrack, reopenBonusTrack, saveBonusAnswer, resolveBonusTrack, getBonusTracks,
   getLeaderboard, getStandings,
+  lockMatchesForToday, updateMatchKickoff,
   createPlayoffMatch, deletePlayoffMatch, getPlayoffMatches, savePlayoffPrediction,
   exportAll,
   getSetting, setSetting,

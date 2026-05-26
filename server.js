@@ -28,6 +28,13 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Auto-lock helpers ─────────────────────────────────────────────────────────
 
+function getArgDate() {
+  const argNow = new Date(Date.now() - 3 * 60 * 60 * 1000);
+  const dd = String(argNow.getUTCDate()).padStart(2, '0');
+  const mm = String(argNow.getUTCMonth() + 1).padStart(2, '0');
+  return `${dd}/${mm}`; // "DD/MM"
+}
+
 // Parse "DD/MM HH:MM" (Argentina time = UTC-3) → Date in UTC
 function parseArgTime(kickoffArg) {
   const [datePart, timePart] = kickoffArg.split(' ');
@@ -60,7 +67,7 @@ function scheduleAutoLocks() {
   });
 }
 
-// Hourly sweep: lock any match whose kickoff has passed
+// Hourly sweep: lock matches past kickoff + apply day-lock if enabled
 setInterval(() => {
   const now = new Date();
   db.getAllMatches()
@@ -69,6 +76,10 @@ setInterval(() => {
       db.lockMatch(m.id);
       io.emit('match:locked', { match_id: m.id });
     });
+  if (db.getSetting('lock_on_match_day') === '1') {
+    const ids = db.lockMatchesForToday(getArgDate());
+    ids.forEach(id => io.emit('match:locked', { match_id: id }));
+  }
 }, 60 * 60 * 1000);
 
 // ── Broadcast helpers ─────────────────────────────────────────────────────────
@@ -133,6 +144,27 @@ app.post('/api/admin/group-predictions-lock', (req, res) => {
   db.setSetting('group_predictions_locked', locked ? '1' : '0');
   io.emit('groups:lock', { locked: !!locked });
   res.json({ ok: true, locked: !!locked });
+});
+
+app.get('/api/settings/lock-on-match-day', (req, res) => {
+  res.json({ enabled: db.getSetting('lock_on_match_day') === '1' });
+});
+app.post('/api/admin/lock-on-match-day', (req, res) => {
+  const { enabled } = req.body;
+  db.setSetting('lock_on_match_day', enabled ? '1' : '0');
+  if (enabled) {
+    const ids = db.lockMatchesForToday(getArgDate());
+    ids.forEach(id => io.emit('match:locked', { match_id: id }));
+  }
+  io.emit('lock-on-match-day:updated', { enabled: !!enabled });
+  res.json({ ok: true, enabled: !!enabled });
+});
+
+app.put('/api/admin/match/:id/kickoff', (req, res) => {
+  const { kickoff_arg } = req.body;
+  if (!kickoff_arg) return res.status(400).json({ error: 'Missing kickoff_arg' });
+  db.updateMatchKickoff(parseInt(req.params.id), kickoff_arg);
+  res.json({ ok: true });
 });
 
 app.get('/api/settings/bonus-answers-locked', (req, res) => {
@@ -287,6 +319,9 @@ const PORT = process.env.PORT || 3000;
 
 db.init().then(() => {
   scheduleAutoLocks();
+  if (db.getSetting('lock_on_match_day') === '1') {
+    db.lockMatchesForToday(getArgDate());
+  }
   server.listen(PORT, () => {
     console.log(`\n🌍 Prode USA 2026 running on port ${PORT}`);
     console.log(`   Admin panel: /admin.html\n`);

@@ -62,11 +62,16 @@
 
   <!-- ── TAB: RESULTADOS GRUPOS ─────────────────────────────────────── -->
   <div class="tab-panel active" id="panel-resultados">
-    <div class="flex items-center justify-between mb-4">
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
       <p class="text-slate-400 text-sm">Ingresá el resultado real de cada partido. Al guardar, los puntos se recalculan automáticamente.</p>
-      <button id="lockGroupsBtn" onclick="toggleGroupsLock()"
-        class="shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-      </button>
+      <div class="flex gap-2 shrink-0">
+        <button id="lockMatchDayBtn" onclick="toggleMatchDayLock()"
+          class="text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+        </button>
+        <button id="lockGroupsBtn" onclick="toggleGroupsLock()"
+          class="text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+        </button>
+      </div>
     </div>
 
     <!-- Group filter -->
@@ -539,6 +544,43 @@ async function toggleSpecialsLock() {
   }
 }
 
+// ── Match-day auto-lock ───────────────────────────────────────────────────────
+
+let matchDayLockEnabled = false;
+
+function renderMatchDayLockBtn(enabled) {
+  matchDayLockEnabled = enabled;
+  const btn = document.getElementById('lockMatchDayBtn');
+  if (enabled) {
+    btn.textContent = '📅 Bloqueo por día: ON';
+    btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-yellow-500 hover:bg-yellow-400 text-black';
+  } else {
+    btn.textContent = '📅 Bloqueo por día: OFF';
+    btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-slate-700 hover:bg-slate-600 text-white';
+  }
+}
+
+async function loadMatchDayLockState() {
+  const res = await fetch('/api/settings/lock-on-match-day');
+  const { enabled } = await res.json();
+  renderMatchDayLockBtn(enabled);
+}
+
+async function toggleMatchDayLock() {
+  const res = await fetch('/api/admin/lock-on-match-day', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ enabled: !matchDayLockEnabled })
+  });
+  if (res.ok) {
+    const { enabled } = await res.json();
+    renderMatchDayLockBtn(enabled);
+    toast(enabled
+      ? '📅 Bloqueo por día activado — los partidos de hoy se bloquean automáticamente'
+      : '📅 Bloqueo por día desactivado');
+    if (enabled) loadMatches();
+  }
+}
+
 // ── Groups lock ───────────────────────────────────────────────────────────────
 
 let groupsLocked = false;
@@ -623,6 +665,7 @@ loadBonus();
 loadSpecialsLockState();
 loadGroupsLockState();
 loadBonusLockState();
+loadMatchDayLockState();
 </script>
 </body>
 </html>
