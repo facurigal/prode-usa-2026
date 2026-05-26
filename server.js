@@ -28,23 +28,51 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Auto-lock helpers ─────────────────────────────────────────────────────────
 
-function getArgDate() {
-  const argNow = new Date(Date.now() - 3 * 60 * 60 * 1000);
-  const dd = String(argNow.getUTCDate()).padStart(2, '0');
-  const mm = String(argNow.getUTCMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}`; // "DD/MM"
-}
-
-// Parse "DD/MM HH:MM" (Argentina time = UTC-3) → Date in UTC
+// Parse "DD/MM HH:MM" (Berlin time = UTC+2) → Date in UTC
 function parseArgTime(kickoffArg) {
   const [datePart, timePart] = kickoffArg.split(' ');
   const [day, month] = datePart.split('/').map(Number);
   const [hour, min] = timePart.split(':').map(Number);
-  // Argentina is UTC-3, so add 3 hours to get UTC
-  return new Date(Date.UTC(2026, month - 1, day, hour + 3, min, 0));
+  // Berlin is UTC+2, so subtract 2 hours to get UTC
+  return new Date(Date.UTC(2026, month - 1, day, hour - 2, min, 0));
 }
 
 const MAX_TIMEOUT = 2_147_483_647; // Node setTimeout 32-bit int limit (~24.8 days)
+
+function lock30MinBefore() {
+  const now = new Date();
+  db.getAllMatches()
+    .filter(m => m.status === 'upcoming' && /\d{2}\/\d{2} \d{2}:\d{2}/.test(m.kickoff_arg))
+    .forEach(m => {
+      const lockAt = new Date(parseArgTime(m.kickoff_arg) - 30 * 60 * 1000);
+      if (lockAt <= now) {
+        db.lockMatch(m.id);
+        io.emit('match:locked', { match_id: m.id });
+      }
+    });
+}
+
+function schedule30MinBeforeLocks() {
+  const now = new Date();
+  db.getAllMatches()
+    .filter(m => m.status === 'upcoming' && /\d{2}\/\d{2} \d{2}:\d{2}/.test(m.kickoff_arg))
+    .forEach(m => {
+      const lockAt = new Date(parseArgTime(m.kickoff_arg) - 30 * 60 * 1000);
+      const delay = lockAt - now;
+      if (delay <= 0) {
+        db.lockMatch(m.id);
+        io.emit('match:locked', { match_id: m.id });
+      } else if (delay <= MAX_TIMEOUT) {
+        setTimeout(() => {
+          if (db.getSetting('lock_30min_before') === '1') {
+            db.lockMatch(m.id);
+            io.emit('match:locked', { match_id: m.id });
+            console.log(`30min-lock match ${m.id}: ${m.team_home} vs ${m.team_away}`);
+          }
+        }, delay);
+      }
+    });
+}
 
 function scheduleAutoLocks() {
   const now = new Date();
@@ -63,23 +91,27 @@ function scheduleAutoLocks() {
         console.log(`Locked match ${m.id}: ${m.team_home} vs ${m.team_away}`);
       }, delay);
     }
-    // Matches beyond 24 days are handled by the hourly sweep below
   });
+
+  if (db.getSetting('lock_30min_before') === '1') {
+    schedule30MinBeforeLocks();
+  }
 }
 
-// Hourly sweep: lock matches past kickoff + apply day-lock if enabled
+// Hourly sweep: lock matches past kickoff or within 30min if setting enabled
 setInterval(() => {
   const now = new Date();
+  const lock30 = db.getSetting('lock_30min_before') === '1';
   db.getAllMatches()
-    .filter(m => m.status === 'upcoming' && /\d{2}\/\d{2} \d{2}:\d{2}/.test(m.kickoff_arg) && parseArgTime(m.kickoff_arg) <= now)
+    .filter(m => m.status === 'upcoming' && /\d{2}\/\d{2} \d{2}:\d{2}/.test(m.kickoff_arg))
     .forEach(m => {
-      db.lockMatch(m.id);
-      io.emit('match:locked', { match_id: m.id });
+      const kickoff = parseArgTime(m.kickoff_arg);
+      const shouldLock = kickoff <= now || (lock30 && kickoff - 30 * 60 * 1000 <= now);
+      if (shouldLock) {
+        db.lockMatch(m.id);
+        io.emit('match:locked', { match_id: m.id });
+      }
     });
-  if (db.getSetting('lock_on_match_day') === '1') {
-    const ids = db.lockMatchesForToday(getArgDate());
-    ids.forEach(id => io.emit('match:locked', { match_id: id }));
-  }
 }, 60 * 60 * 1000);
 
 // ── Broadcast helpers ─────────────────────────────────────────────────────────
@@ -99,6 +131,10 @@ app.post('/api/users', (req, res) => {
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
   const user = db.upsertUser(name.trim());
   res.json(user);
+});
+
+app.get('/api/matches/:id/predictions', (req, res) => {
+  res.json(db.getMatchPredictions(parseInt(req.params.id)));
 });
 
 app.get('/api/matches', (req, res) => {
@@ -146,17 +182,17 @@ app.post('/api/admin/group-predictions-lock', (req, res) => {
   res.json({ ok: true, locked: !!locked });
 });
 
-app.get('/api/settings/lock-on-match-day', (req, res) => {
-  res.json({ enabled: db.getSetting('lock_on_match_day') === '1' });
+app.get('/api/settings/lock-30min-before', (req, res) => {
+  res.json({ enabled: db.getSetting('lock_30min_before') === '1' });
 });
-app.post('/api/admin/lock-on-match-day', (req, res) => {
+app.post('/api/admin/lock-30min-before', (req, res) => {
   const { enabled } = req.body;
-  db.setSetting('lock_on_match_day', enabled ? '1' : '0');
+  db.setSetting('lock_30min_before', enabled ? '1' : '0');
   if (enabled) {
-    const ids = db.lockMatchesForToday(getArgDate());
-    ids.forEach(id => io.emit('match:locked', { match_id: id }));
+    lock30MinBefore();
+    schedule30MinBeforeLocks();
   }
-  io.emit('lock-on-match-day:updated', { enabled: !!enabled });
+  io.emit('lock-30min-before:updated', { enabled: !!enabled });
   res.json({ ok: true, enabled: !!enabled });
 });
 
@@ -319,9 +355,6 @@ const PORT = process.env.PORT || 3000;
 
 db.init().then(() => {
   scheduleAutoLocks();
-  if (db.getSetting('lock_on_match_day') === '1') {
-    db.lockMatchesForToday(getArgDate());
-  }
   server.listen(PORT, () => {
     console.log(`\n🌍 Prode USA 2026 running on port ${PORT}`);
     console.log(`   Admin panel: /admin.html\n`);

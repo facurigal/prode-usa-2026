@@ -123,6 +123,7 @@ async function init() {
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('group_predictions_locked', '0')`);
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bonus_answers_locked', '0')`);
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_on_match_day', '0')`);
+  db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_30min_before', '0')`);
 
   db.run(`
     CREATE TABLE IF NOT EXISTS bonus_answers (
@@ -154,8 +155,8 @@ async function init() {
     });
     stmt.free();
     save();
-  } else {
-    // Sync kickoff times from fixture in case they were updated
+  } else if (process.env.SYNC_FIXTURE === '1') {
+    // Sync kickoff times from fixture (run once on Railway after fixture update)
     const upd = db.prepare(`UPDATE matches SET kickoff_arg=?, venue=? WHERE id=? AND stage='group'`);
     fixture.forEach(m => upd.run([m.kickoff_arg, m.venue, m.id]));
     upd.free();
@@ -187,6 +188,23 @@ function getMatches(userId) {
     ORDER BY m.id
   `, [userId]);
 
+  if (!rows.length) return [];
+  const cols = rows[0].columns;
+  return rows[0].values.map(row => {
+    const obj = {};
+    cols.forEach((c, i) => obj[c] = row[i]);
+    return obj;
+  });
+}
+
+function getMatchPredictions(matchId) {
+  const rows = db.exec(`
+    SELECT u.name, p.pred_home, p.pred_away, p.points
+    FROM predictions p
+    JOIN users u ON u.id = p.user_id
+    WHERE p.match_id = ?
+    ORDER BY p.points DESC, u.name ASC
+  `, [matchId]);
   if (!rows.length) return [];
   const cols = rows[0].columns;
   return rows[0].values.map(row => {
@@ -617,7 +635,7 @@ function exportAll() {
 module.exports = {
   init, save,
   upsertUser,
-  getMatches, lockMatch, getAllMatches,
+  getMatches, getMatchPredictions, lockMatch, getAllMatches,
   savePrediction,
   saveSpecialPicks, getSpecialPicks,
   saveGroupResult, savePlayoffResult,

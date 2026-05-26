@@ -1,4 +1,4 @@
-// All 72 group stage matches — kickoff_arg = Argentina time (UTC-3), +5h from original schedule
+// All 72 group stage matches — kickoff times in Berlin time (UTC+2)
 module.exports = [
   // ── GRUPO A ──────────────────────────────────────────────────────────
   { id:  1, group:'A', home:'México',        away:'Sudáfrica',          kickoff_arg:'11/06 21:00', venue:'Ciudad de México' },
