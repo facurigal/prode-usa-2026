@@ -82,7 +82,12 @@
 
   <!-- ── TAB: PLAYOFFS ──────────────────────────────────────────────── -->
   <div class="tab-panel" id="panel-playoffs">
-    <p class="text-slate-400 text-sm mb-4">Creá partidos de playoffs una vez que terminen los grupos. Indicá si hubo penales.</p>
+    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+      <p class="text-slate-400 text-sm">Creá partidos de playoffs una vez que terminen los grupos. Indicá si hubo penales.</p>
+      <button id="lockMatchDayBtnPO" onclick="toggleMatchDayLock()"
+        class="shrink-0 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+      </button>
+    </div>
 
     <div class="match-card mb-6">
       <h2 class="text-yellow-400 text-lg mb-3">Agregar partido playoff</h2>
@@ -550,14 +555,17 @@ let matchDayLockEnabled = false;
 
 function renderMatchDayLockBtn(enabled) {
   matchDayLockEnabled = enabled;
-  const btn = document.getElementById('lockMatchDayBtn');
-  if (enabled) {
-    btn.textContent = '📅 Bloqueo por día: ON';
-    btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-yellow-500 hover:bg-yellow-400 text-black';
-  } else {
-    btn.textContent = '📅 Bloqueo por día: OFF';
-    btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-slate-700 hover:bg-slate-600 text-white';
-  }
+  ['lockMatchDayBtn', 'lockMatchDayBtnPO'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    if (enabled) {
+      btn.textContent = '📅 Bloqueo por día: ON';
+      btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-yellow-500 hover:bg-yellow-400 text-black';
+    } else {
+      btn.textContent = '📅 Bloqueo por día: OFF';
+      btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-slate-700 hover:bg-slate-600 text-white';
+    }
+  });
 }
 
 async function loadMatchDayLockState() {

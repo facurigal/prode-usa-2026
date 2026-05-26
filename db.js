@@ -489,6 +489,8 @@ function lockMatchesForToday(dateStr) {
 
 function updateMatchKickoff(id, kickoffArg) {
   db.run(`UPDATE matches SET kickoff_arg=? WHERE id=?`, [kickoffArg, id]);
+  // If new kickoff is in the future, restore to upcoming so it isn't stuck locked
+  db.run(`UPDATE matches SET status='upcoming' WHERE id=? AND status='locked' AND score_home IS NULL`, [id]);
   save();
 }
 
