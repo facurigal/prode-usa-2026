@@ -11,17 +11,18 @@ const io = new Server(server);
 app.use(express.json());
 
 // ── Admin auth ────────────────────────────────────────────────────────────────
-app.use('/admin.html', (req, res, next) => {
+app.use((req, res, next) => {
+  if (req.path !== '/admin.html') return next();
   const adminPassword = process.env.ADMIN_PASSWORD;
-  if (!adminPassword) return next(); // no password set → local dev, skip check
+  if (!adminPassword) return next();
 
   const auth = req.headers.authorization;
   if (auth && auth.startsWith('Basic ')) {
     const password = Buffer.from(auth.slice(6), 'base64').toString().split(':')[1];
     if (password === adminPassword) return next();
   }
-  res.setHeader('WWW-Authenticate', 'Basic realm="Admin — Prode 2026"');
-  res.status(401).send('Contraseña incorrecta');
+  res.setHeader('WWW-Authenticate', 'Basic realm="Admin Prode 2026"');
+  res.status(401).send('Contrasena incorrecta');
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
