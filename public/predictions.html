@@ -456,6 +456,13 @@ socket.on('match:locked', ({ match_id }) => {
   renderTabs();
 });
 
+socket.on('match:unlocked', ({ match_id }) => {
+  const m = allMatches.find(x => x.id === match_id);
+  if (m) { m.status = 'upcoming'; m.score_home = null; m.score_away = null; m.points = null; }
+  if (allMatches.filter(x=>x.grp===activeGroup).some(x=>x.id===match_id)) renderMatches();
+  renderTabs();
+});
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 let groupsGloballyLocked = false;

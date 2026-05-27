@@ -244,9 +244,20 @@ function renderAdminMatches() {
         <input type="number" min="0" max="20" id="sa-${m.id}" value="${played?m.score_away:''}" placeholder="Visit."
           class="w-20 text-sm text-center">
         <button onclick="saveResult(${m.id})" class="btn-sm ml-2">${played ? '↻ Actualizar' : '✓ Guardar'}</button>
+        ${played ? `<button onclick="resetResult(${m.id})" class="btn-sm ml-1 bg-slate-700 hover:bg-slate-600 text-slate-300">✕ Limpiar</button>` : ''}
       </div>
     </div>`;
   }).join('');
+}
+
+async function resetResult(matchId) {
+  if (!confirm('¿Limpiar el resultado? Los puntos calculados se borrarán.')) return;
+  const res = await fetch('/api/admin/result/reset', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ match_id: matchId })
+  });
+  if (res.ok) { toast('Resultado limpiado'); loadMatches(); }
+  else toast('✗ Error al limpiar', 'text-red-400');
 }
 
 async function saveResult(matchId) {

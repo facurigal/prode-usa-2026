@@ -277,6 +277,12 @@ function saveGroupResult(matchId, scoreHome, scoreAway) {
   save();
 }
 
+function resetGroupResult(matchId) {
+  db.run(`UPDATE matches SET status='upcoming', score_home=NULL, score_away=NULL WHERE id=? AND stage='group'`, [matchId]);
+  db.run(`UPDATE predictions SET points=NULL WHERE match_id=?`, [matchId]);
+  save();
+}
+
 // ── Admin: Playoff Result ─────────────────────────────────────────────────────
 
 function savePlayoffResult(matchId, scoreHome, scoreAway, wentToPens, pensWinner) {
@@ -638,7 +644,7 @@ module.exports = {
   getMatches, getMatchPredictions, lockMatch, getAllMatches,
   savePrediction,
   saveSpecialPicks, getSpecialPicks,
-  saveGroupResult, savePlayoffResult,
+  saveGroupResult, resetGroupResult, savePlayoffResult,
   resolveSpecial, getSpecialActuals,
   createBonusTrack, updateBonusTrack, reopenBonusTrack, saveBonusAnswer, resolveBonusTrack, getBonusTracks,
   getLeaderboard, getStandings,

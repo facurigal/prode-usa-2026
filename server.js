@@ -268,6 +268,16 @@ app.post('/api/admin/result', (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/admin/result/reset', (req, res) => {
+  const { match_id } = req.body;
+  if (match_id == null) return res.status(400).json({ error: 'Missing match_id' });
+  db.resetGroupResult(match_id);
+  io.emit('match:unlocked', { match_id: parseInt(match_id) });
+  broadcastLeaderboard();
+  broadcastStandings();
+  res.json({ ok: true });
+});
+
 app.post('/api/admin/playoff-result', (req, res) => {
   const { match_id, score_home, score_away, went_to_pens, pens_winner } = req.body;
   if (match_id == null || score_home == null || score_away == null)
