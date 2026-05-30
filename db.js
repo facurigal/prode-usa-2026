@@ -587,6 +587,17 @@ function setSetting(key, value) {
   save();
 }
 
+function resetAll() {
+  db.run('DELETE FROM bonus_answers');
+  db.run('DELETE FROM bonus_tracks');
+  db.run('DELETE FROM special_picks');
+  db.run('DELETE FROM predictions');
+  db.run('DELETE FROM users');
+  db.run(`UPDATE matches SET status='upcoming', score_home=NULL, score_away=NULL, went_to_pens=0, pens_winner=NULL WHERE stage='group'`);
+  db.run(`DELETE FROM matches WHERE stage != 'group'`);
+  save();
+}
+
 function exportAll() {
   function query(sql) {
     const rows = db.exec(sql);
@@ -650,6 +661,6 @@ module.exports = {
   getLeaderboard, getStandings,
   lockMatchesForToday, updateMatchKickoff,
   createPlayoffMatch, deletePlayoffMatch, getPlayoffMatches, savePlayoffPrediction,
-  exportAll,
+  exportAll, resetAll,
   getSetting, setSetting,
 };

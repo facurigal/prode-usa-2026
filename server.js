@@ -344,6 +344,13 @@ app.delete('/api/admin/playoff-match/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+app.post('/api/admin/reset-all', (req, res) => {
+  db.resetAll();
+  broadcastLeaderboard();
+  broadcastStandings();
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/export', (req, res) => {
   const data = db.exportAll();
   const filename = `prode-backup-${new Date().toISOString().slice(0,10)}.json`;
