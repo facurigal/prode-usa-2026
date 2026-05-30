@@ -351,6 +351,12 @@ app.post('/api/admin/reset-all', (req, res) => {
   res.json({ ok: true });
 });
 
+app.delete('/api/admin/user/:name', (req, res) => {
+  db.deleteUser(req.params.name);
+  broadcastLeaderboard();
+  res.json({ ok: true });
+});
+
 app.get('/api/admin/export', (req, res) => {
   const data = db.exportAll();
   const filename = `prode-backup-${new Date().toISOString().slice(0,10)}.json`;

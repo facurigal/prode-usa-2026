@@ -587,6 +587,17 @@ function setSetting(key, value) {
   save();
 }
 
+function deleteUser(name) {
+  const user = db.exec(`SELECT id FROM users WHERE name = ? COLLATE NOCASE`, [name]);
+  if (!user.length || !user[0].values.length) return;
+  const userId = user[0].values[0][0];
+  db.run(`DELETE FROM bonus_answers WHERE user_id = ?`, [userId]);
+  db.run(`DELETE FROM predictions WHERE user_id = ?`, [userId]);
+  db.run(`DELETE FROM special_picks WHERE user_id = ?`, [userId]);
+  db.run(`DELETE FROM users WHERE id = ?`, [userId]);
+  save();
+}
+
 function resetAll() {
   db.run('DELETE FROM bonus_answers');
   db.run('DELETE FROM bonus_tracks');
@@ -661,6 +672,6 @@ module.exports = {
   getLeaderboard, getStandings,
   lockMatchesForToday, updateMatchKickoff,
   createPlayoffMatch, deletePlayoffMatch, getPlayoffMatches, savePlayoffPrediction,
-  exportAll, resetAll,
+  exportAll, resetAll, deleteUser,
   getSetting, setSetting,
 };
