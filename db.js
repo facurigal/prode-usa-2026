@@ -356,6 +356,28 @@ function reopenBonusTrack(id) {
   save();
 }
 
+function lockBonusTrack(id) {
+  db.run(`UPDATE bonus_tracks SET status='closed' WHERE id=? AND status='open'`, [id]);
+  save();
+}
+
+function getBonusTrackAnswers(bonusTrackId) {
+  const rows = db.exec(`
+    SELECT u.name, ba.answer, ba.points
+    FROM bonus_answers ba
+    JOIN users u ON u.id = ba.user_id
+    WHERE ba.bonus_track_id = ?
+    ORDER BY ba.points DESC, u.name ASC
+  `, [bonusTrackId]);
+  if (!rows.length) return [];
+  const cols = rows[0].columns;
+  return rows[0].values.map(row => {
+    const obj = {};
+    cols.forEach((c, i) => obj[c] = row[i]);
+    return obj;
+  });
+}
+
 function saveBonusAnswer(userId, bonusTrackId, answer) {
   const track = db.exec(`SELECT status FROM bonus_tracks WHERE id=?`, [bonusTrackId]);
   if (!track.length || track[0].values[0][0] !== 'open') return { ok: false, error: 'Bonus track is closed' };
@@ -669,6 +691,7 @@ module.exports = {
   saveGroupResult, resetGroupResult, savePlayoffResult,
   resolveSpecial, getSpecialActuals,
   createBonusTrack, updateBonusTrack, reopenBonusTrack, saveBonusAnswer, resolveBonusTrack, getBonusTracks,
+  lockBonusTrack, getBonusTrackAnswers,
   getLeaderboard, getStandings,
   lockMatchesForToday, updateMatchKickoff,
   createPlayoffMatch, deletePlayoffMatch, getPlayoffMatches, savePlayoffPrediction,

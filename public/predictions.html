@@ -387,22 +387,64 @@ function renderBonusTracks(tracks) {
           ? `<p class="text-xs text-slate-400 mt-1">Tu respuesta: <strong class="text-white">${t.my_answer}</strong></p>`
           : `<p class="text-xs text-slate-600 mt-1">Cerrada — no respondiste</p>`;
 
+    const canExpand = !isOpen;
+
     return `
-    <div class="bg-white/4 border border-white/8 rounded-xl px-4 py-3" id="bt-${t.id}">
-      <div class="flex items-start justify-between gap-2">
-        <div class="flex-1">
-          <div class="flex items-center gap-2 mb-1">
-            <span class="text-yellow-400 font-bold text-xs">#${t.question_number}</span>
-            ${statusPill}
-            <span class="text-slate-600 text-xs">· hasta ${t.deadline_arg}</span>
+    <div class="bg-white/4 border border-white/8 rounded-xl overflow-hidden" id="bt-${t.id}">
+      <div class="px-4 py-3 ${canExpand ? 'cursor-pointer select-none' : ''}"
+           ${canExpand ? `onclick="toggleBonusAnswers(${t.id}, this)"` : ''}>
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-yellow-400 font-bold text-xs">#${t.question_number}</span>
+              ${statusPill}
+              <span class="text-slate-600 text-xs">· hasta ${t.deadline_arg}</span>
+              ${canExpand ? `<span class="text-slate-400 text-xs ml-1 chevron-bt-${t.id}">▼</span>` : ''}
+            </div>
+            <p class="text-white text-sm font-medium">${t.question_text}</p>
           </div>
-          <p class="text-white text-sm font-medium">${t.question_text}</p>
+          ${isResolved && answered ? `<span class="text-yellow-400 font-bold text-sm shrink-0">${t.my_points ?? 0} pts</span>` : ''}
         </div>
-        ${isResolved && answered ? `<span class="text-yellow-400 font-bold text-sm shrink-0">${t.my_points ?? 0} pts</span>` : ''}
+        ${answerBlock}
       </div>
-      ${answerBlock}
+      <div id="bt-answers-${t.id}" class="hidden border-t border-white/8 px-4 py-3 bg-white/2"></div>
     </div>`;
   }).join('');
+}
+
+async function toggleBonusAnswers(trackId, headerEl) {
+  const panel = document.getElementById(`bt-answers-${trackId}`);
+  const chevron = headerEl.querySelector(`.chevron-bt-${trackId}`);
+  if (!panel.classList.contains('hidden')) {
+    panel.classList.add('hidden');
+    if (chevron) chevron.textContent = '▼';
+    return;
+  }
+  panel.innerHTML = '<p class="text-slate-500 text-xs text-center py-2">Cargando...</p>';
+  panel.classList.remove('hidden');
+  if (chevron) chevron.textContent = '▲';
+
+  const answers = await fetch(`/api/bonus-tracks/${trackId}/answers`).then(r => r.json());
+  if (!answers.length) {
+    panel.innerHTML = '<p class="text-slate-500 text-xs text-center py-2">Nadie respondió esta pregunta.</p>';
+    return;
+  }
+  const colors = ['bg-blue-600','bg-green-600','bg-purple-600','bg-orange-500','bg-pink-600','bg-teal-600','bg-red-600','bg-yellow-600'];
+  panel.innerHTML = `
+    <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase mb-2">Respuestas de usuarios</p>
+    ${answers.map((a, i) => {
+      const initials = a.name.split(/[\s_]/).map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const color = colors[i % colors.length];
+      const ptsColor = a.points === 2 ? 'text-green-400' : 'text-slate-500';
+      const ptsLabel = a.points != null ? `<span class="${ptsColor} font-bold text-sm">+${a.points} pts</span>` : '';
+      return `
+      <div class="flex items-center gap-3 py-1.5 border-b border-white/5 last:border-0">
+        <div class="w-8 h-8 rounded-full ${color} flex items-center justify-center text-xs font-bold text-white shrink-0">${initials}</div>
+        <span class="flex-1 text-sm text-white">${a.name}</span>
+        <span class="text-sm font-bold text-white">${a.answer}</span>
+        ${ptsLabel}
+      </div>`;
+    }).join('')}`;
 }
 
 async function submitBonus(trackId) {

@@ -99,6 +99,40 @@ function scheduleAutoLocks() {
   }
 }
 
+// Bonus tracks lock 30min before their own deadline, always (no admin toggle)
+function lockBonusTracksDue() {
+  const now = new Date();
+  db.getBonusTracks(-1)
+    .filter(t => t.status === 'open' && /\d{2}\/\d{2} \d{2}:\d{2}/.test(t.deadline_arg))
+    .forEach(t => {
+      const lockAt = new Date(parseArgTime(t.deadline_arg) - 30 * 60 * 1000);
+      if (lockAt <= now) {
+        db.lockBonusTrack(t.id);
+        io.emit('bonus:updated');
+      }
+    });
+}
+
+function scheduleBonusLocks() {
+  const now = new Date();
+  db.getBonusTracks(-1)
+    .filter(t => t.status === 'open' && /\d{2}\/\d{2} \d{2}:\d{2}/.test(t.deadline_arg))
+    .forEach(t => {
+      const lockAt = new Date(parseArgTime(t.deadline_arg) - 30 * 60 * 1000);
+      const delay = lockAt - now;
+      if (delay <= 0) {
+        db.lockBonusTrack(t.id);
+        io.emit('bonus:updated');
+      } else if (delay <= MAX_TIMEOUT) {
+        setTimeout(() => {
+          db.lockBonusTrack(t.id);
+          io.emit('bonus:updated');
+          console.log(`30min-lock bonus track ${t.id}: ${t.question_text}`);
+        }, delay);
+      }
+    });
+}
+
 // Hourly sweep: lock matches past kickoff or within 30min if setting enabled
 setInterval(() => {
   const now = new Date();
@@ -113,6 +147,7 @@ setInterval(() => {
         io.emit('match:locked', { match_id: m.id });
       }
     });
+  lockBonusTracksDue();
 }, 60 * 60 * 1000);
 
 // ── Broadcast helpers ─────────────────────────────────────────────────────────
@@ -201,6 +236,8 @@ app.put('/api/admin/match/:id/kickoff', (req, res) => {
   const { kickoff_arg } = req.body;
   if (!kickoff_arg) return res.status(400).json({ error: 'Missing kickoff_arg' });
   db.updateMatchKickoff(parseInt(req.params.id), kickoff_arg);
+  lock30MinBefore();
+  schedule30MinBeforeLocks();
   res.json({ ok: true });
 });
 
@@ -230,6 +267,10 @@ app.get('/api/standings', (req, res) => {
 app.get('/api/bonus-tracks', (req, res) => {
   const userId = parseInt(req.query.user_id) || -1;
   res.json(db.getBonusTracks(userId));
+});
+
+app.get('/api/bonus-tracks/:id/answers', (req, res) => {
+  res.json(db.getBonusTrackAnswers(parseInt(req.params.id)));
 });
 
 app.post('/api/bonus-answers', (req, res) => {
@@ -304,6 +345,7 @@ app.post('/api/admin/bonus-track', (req, res) => {
   if (!question_text || !deadline_arg) return res.status(400).json({ error: 'Missing fields' });
   const id = db.createBonusTrack(question_number || 1, question_text, deadline_arg);
   io.emit('bonus:new', { id, question_number: question_number || 1, question_text, deadline_arg });
+  scheduleBonusLocks();
   res.json({ ok: true, id });
 });
 
@@ -312,6 +354,7 @@ app.put('/api/admin/bonus-track/:id', (req, res) => {
   if (!question_text || !deadline_arg) return res.status(400).json({ error: 'Missing fields' });
   db.updateBonusTrack(parseInt(req.params.id), question_number || 1, question_text, deadline_arg);
   io.emit('bonus:updated');
+  scheduleBonusLocks();
   res.json({ ok: true });
 });
 
@@ -379,6 +422,7 @@ const PORT = process.env.PORT || 3000;
 
 db.init().then(() => {
   scheduleAutoLocks();
+  scheduleBonusLocks();
   server.listen(PORT, () => {
     console.log(`\n🌍 Prode USA 2026 running on port ${PORT}`);
     console.log(`   Admin panel: /admin.html\n`);
