@@ -68,8 +68,10 @@ const STAGE_LABELS = { r32:'Round of 32', r16:'Round of 16', qf:'Cuartos de Fina
 const STAGE_ORDER = ['r32','r16','qf','sf','final','third'];
 
 let saveTimers = {};
+let allPlayoffMatches = [];
 
 function renderPlayoffs(data) {
+  allPlayoffMatches = Object.values(data).flat();
   const el = document.getElementById('playoffContent');
   const stages = STAGE_ORDER.filter(s => data[s] && data[s].length);
 
@@ -86,9 +88,12 @@ function renderPlayoffs(data) {
       const pts = m.points != null ? `<span class="text-yellow-400 font-bold text-sm ml-2">${m.points} pts</span>` : '';
       const result = played ? `<span class="text-slate-400 text-xs">(${m.score_home}-${m.score_away}${m.went_to_pens?` P:${m.pens_winner==='home'?m.team_home:m.team_away}`:''} )</span>` : '';
 
+      const canExpand = locked;
+
       return `
       <div class="match-card mb-2" id="pm-${m.id}">
-        <div class="flex items-center justify-between flex-wrap gap-2 mb-2">
+        <div class="flex items-center justify-between flex-wrap gap-2 mb-2 ${canExpand?'cursor-pointer select-none':''}"
+             ${canExpand ? `onclick="togglePlayoffPredictions(${m.id}, this)"` : ''}>
           <div>
             <span class="text-white font-medium">${m.team_home}</span>
             <span class="text-slate-500 text-xs mx-2">vs</span>
@@ -98,9 +103,10 @@ function renderPlayoffs(data) {
           <div class="flex items-center gap-2">
             ${pts}
             ${locked ? `<span class="text-xs ${played?'text-slate-500':'text-orange-400'}">${played?'✓ Jugado':'🔒'}</span>` : ''}
+            ${canExpand ? `<span class="text-slate-400 text-xs ml-1 chevron-pm-${m.id}">▼</span>` : ''}
           </div>
         </div>
-        <div class="flex items-center flex-wrap gap-2">
+        <div class="flex items-center flex-wrap gap-2" onclick="event.stopPropagation()">
           <input type="number" min="0" max="20" class="score-input" id="pph-${m.id}"
             value="${m.pred_home??''}" placeholder="–" ${locked?'disabled':''} onchange="queueSave(${m.id})">
           <span class="text-slate-400 font-bold">-</span>
@@ -116,11 +122,54 @@ function renderPlayoffs(data) {
           </div>
         </div>
         <p class="text-slate-600 text-xs mt-2">${m.kickoff_arg||''}</p>
+        ${canExpand ? `<div id="pm-preds-${m.id}" class="hidden mt-2 pt-2 border-t border-white/8"></div>` : ''}
       </div>`;
     }).join('');
 
     return `<div class="mb-6"><h2 class="text-yellow-400 text-2xl mb-3">${STAGE_LABELS[stage]||stage}</h2>${rows}</div>`;
   }).join('');
+}
+
+async function togglePlayoffPredictions(matchId, headerEl) {
+  const panel = document.getElementById(`pm-preds-${matchId}`);
+  const chevron = headerEl.querySelector(`.chevron-pm-${matchId}`);
+  if (!panel.classList.contains('hidden')) {
+    panel.classList.add('hidden');
+    if (chevron) chevron.textContent = '▼';
+    return;
+  }
+  panel.innerHTML = '<p class="text-slate-500 text-xs text-center py-2">Cargando...</p>';
+  panel.classList.remove('hidden');
+  if (chevron) chevron.textContent = '▲';
+
+  const m = allPlayoffMatches.find(x => x.id === matchId);
+  const preds = await fetch(`/api/matches/${matchId}/predictions`).then(r => r.json());
+  if (!preds.length) {
+    panel.innerHTML = '<p class="text-slate-500 text-xs text-center py-2">Nadie hizo pronóstico para este partido.</p>';
+    return;
+  }
+  const colors = ['bg-blue-600','bg-green-600','bg-purple-600','bg-orange-500','bg-pink-600','bg-teal-600','bg-red-600','bg-yellow-600'];
+  panel.innerHTML = `
+    <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase mb-2">Predicciones de usuarios</p>
+    ${preds.map((p, i) => {
+      const initials = p.name.split(/[\s_]/).map(w=>w[0]).join('').toUpperCase().slice(0,2);
+      const color = colors[i % colors.length];
+      const ptsColor = p.points === 5 ? 'text-green-400' : p.points === 2 ? 'text-blue-400' : p.points === 1 ? 'text-orange-400' : 'text-slate-500';
+      const ptsLabel = p.points != null ? `<span class="${ptsColor} font-bold text-sm">+${p.points} pts</span>` : '';
+      const pensTeam = p.pred_pens_winner === 'home' ? m?.team_home : p.pred_pens_winner === 'away' ? m?.team_away : null;
+      const pensLabel = pensTeam ? `<span class="text-slate-500 text-xs">(pens: ${pensTeam})</span>` : '';
+      return `
+      <div class="flex items-center gap-3 py-1.5 border-b border-white/5 last:border-0">
+        <div class="w-8 h-8 rounded-full ${color} flex items-center justify-center text-xs font-bold text-white shrink-0">${initials}</div>
+        <span class="flex-1 text-sm text-white">${p.name}</span>
+        <span class="text-slate-400 text-xs">Pred:</span>
+        <span class="text-sm font-bold ${p.pred_home != null ? 'text-white' : 'text-slate-600'}">${p.pred_home ?? '–'}</span>
+        <span class="text-slate-500 text-xs">-</span>
+        <span class="text-sm font-bold ${p.pred_away != null ? 'text-white' : 'text-slate-600'}">${p.pred_away ?? '–'}</span>
+        ${pensLabel}
+        ${ptsLabel}
+      </div>`;
+    }).join('')}`;
 }
 
 function queueSave(matchId) {

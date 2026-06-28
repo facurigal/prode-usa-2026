@@ -199,7 +199,7 @@ function getMatches(userId) {
 
 function getMatchPredictions(matchId) {
   const rows = db.exec(`
-    SELECT u.name, p.pred_home, p.pred_away, p.points
+    SELECT u.name, p.pred_home, p.pred_away, p.pred_pens_winner, p.points
     FROM predictions p
     JOIN users u ON u.id = p.user_id
     WHERE p.match_id = ?
