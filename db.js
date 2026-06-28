@@ -17,9 +17,24 @@ function calcGroupPoints(predH, predA, realH, realA) {
 }
 
 function calcPlayoffPoints(predH, predA, realH, realA, wentToPens, pensWinner, predPensWinner) {
-  if (!wentToPens) return calcGroupPoints(predH, predA, realH, realA);
-  if (predPensWinner !== pensWinner) return 1;
-  return (predH === realH && predA === realA) ? 5 : 2;
+  const predIsDraw = predH === predA;
+  const predExact = predH === realH && predA === realA;
+  const predWinner = predH > predA ? 'home' : 'away'; // only meaningful when !predIsDraw
+
+  if (!wentToPens) {
+    const realWinner = realH > realA ? 'home' : 'away';
+    if (predExact) return 5;
+    if (!predIsDraw && predWinner === realWinner) return 2;
+    if (predIsDraw && predPensWinner === realWinner) return 1;
+    return 0;
+  }
+
+  // Went to pens: realH === realA (draw at 90')
+  if (predIsDraw) {
+    if (predExact) return predPensWinner === pensWinner ? 5 : 1;
+    return predPensWinner === pensWinner ? 2 : 0;
+  }
+  return predWinner === pensWinner ? 1 : 0;
 }
 
 // ── Persistence ───────────────────────────────────────────────────────────────
