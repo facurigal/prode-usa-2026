@@ -113,9 +113,9 @@ function renderPlayoffs(data) {
           <input type="number" min="0" max="20" class="score-input" id="ppa-${m.id}"
             value="${m.pred_away??''}" placeholder="–" ${locked?'disabled':''} onchange="queueSave(${m.id})">
           <div class="flex items-center gap-1.5 ml-1">
-            <label class="text-xs text-slate-400">Si penales, ganó:</label>
+            <label class="text-xs text-slate-400">Ganador por penales (completar solo si predijiste empate):</label>
             <select id="ppw-${m.id}" ${locked?'disabled':''} onchange="queueSave(${m.id})">
-              <option value="">— sin pens —</option>
+              <option value="">Sin penales</option>
               <option value="home" ${m.pred_pens_winner==='home'?'selected':''}>${m.team_home}</option>
               <option value="away" ${m.pred_pens_winner==='away'?'selected':''}>${m.team_away}</option>
             </select>
