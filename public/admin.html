@@ -141,9 +141,14 @@
   <div class="tab-panel" id="panel-bonus">
     <div class="flex items-center justify-between mb-4">
       <p class="text-slate-400 text-sm">Creá preguntas de bonus track (2 pts c/u, máx 10). Los jugadores responden antes del deadline.</p>
-      <button id="lockBonusBtn" onclick="toggleBonusLock()"
-        class="shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors">
-      </button>
+      <div class="flex gap-2 shrink-0 ml-4">
+        <button id="bonusLock30minBtn" onclick="toggleBonus30minLock()"
+          class="text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+        </button>
+        <button id="lockBonusBtn" onclick="toggleBonusLock()"
+          class="text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+        </button>
+      </div>
     </div>
 
     <div class="match-card mb-6">
@@ -637,16 +642,47 @@ async function toggleGroupsLock() {
 // ── Bonus lock ────────────────────────────────────────────────────────────────
 
 let bonusLocked = false;
+let bonus30minEnabled = false;
 
 function renderBonusLockBtn(locked) {
   bonusLocked = locked;
   const btn = document.getElementById('lockBonusBtn');
   if (locked) {
     btn.textContent = '🔓 Desbloquear bonus';
-    btn.className = 'shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-green-600 hover:bg-green-500 text-white';
+    btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-green-600 hover:bg-green-500 text-white';
   } else {
     btn.textContent = '🔒 Bloquear bonus';
-    btn.className = 'shrink-0 ml-4 text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-red-600 hover:bg-red-500 text-white';
+    btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-red-600 hover:bg-red-500 text-white';
+  }
+}
+
+function renderBonus30minBtn(enabled) {
+  bonus30minEnabled = enabled;
+  const btn = document.getElementById('bonusLock30minBtn');
+  if (enabled) {
+    btn.textContent = '⏱ Bloqueo 30min: ON';
+    btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-yellow-500 hover:bg-yellow-400 text-black';
+  } else {
+    btn.textContent = '⏱ Bloqueo 30min: OFF';
+    btn.className = 'text-sm font-bold px-4 py-2 rounded-lg transition-colors bg-slate-700 hover:bg-slate-600 text-white';
+  }
+}
+
+async function loadBonus30minLockState() {
+  const res = await fetch('/api/settings/bonus-lock-30min-before');
+  const { enabled } = await res.json();
+  renderBonus30minBtn(enabled);
+}
+
+async function toggleBonus30minLock() {
+  const res = await fetch('/api/admin/bonus-lock-30min-before', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ enabled: !bonus30minEnabled })
+  });
+  if (res.ok) {
+    const { enabled } = await res.json();
+    renderBonus30minBtn(enabled);
+    toast(enabled ? '⏱ Bloqueo 30min bonus activado' : '⏱ Bloqueo 30min bonus desactivado');
   }
 }
 
@@ -684,6 +720,7 @@ loadBonus();
 loadSpecialsLockState();
 loadGroupsLockState();
 loadBonusLockState();
+loadBonus30minLockState();
 loadMatchDayLockState();
 </script>
 </body>

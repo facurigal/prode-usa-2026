@@ -139,6 +139,7 @@ async function init() {
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bonus_answers_locked', '0')`);
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_on_match_day', '0')`);
   db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('lock_30min_before', '0')`);
+  db.run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('bonus_lock_30min_before', '0')`);
 
   db.run(`
     CREATE TABLE IF NOT EXISTS bonus_answers (

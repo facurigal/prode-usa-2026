@@ -99,7 +99,6 @@ function scheduleAutoLocks() {
   }
 }
 
-// Bonus tracks lock 30min before their own deadline, always (no admin toggle)
 function lockBonusTracksDue() {
   const now = new Date();
   db.getBonusTracks(-1)
@@ -114,6 +113,7 @@ function lockBonusTracksDue() {
 }
 
 function scheduleBonusLocks() {
+  if (db.getSetting('bonus_lock_30min_before') !== '1') return;
   const now = new Date();
   db.getBonusTracks(-1)
     .filter(t => t.status === 'open' && /\d{2}\/\d{2} \d{2}:\d{2}/.test(t.deadline_arg))
@@ -125,6 +125,7 @@ function scheduleBonusLocks() {
         io.emit('bonus:updated');
       } else if (delay <= MAX_TIMEOUT) {
         setTimeout(() => {
+          if (db.getSetting('bonus_lock_30min_before') !== '1') return;
           db.lockBonusTrack(t.id);
           io.emit('bonus:updated');
           console.log(`30min-lock bonus track ${t.id}: ${t.question_text}`);
@@ -147,7 +148,7 @@ setInterval(() => {
         io.emit('match:locked', { match_id: m.id });
       }
     });
-  lockBonusTracksDue();
+  if (db.getSetting('bonus_lock_30min_before') === '1') lockBonusTracksDue();
 }, 60 * 60 * 1000);
 
 // ── Broadcast helpers ─────────────────────────────────────────────────────────
@@ -229,6 +230,20 @@ app.post('/api/admin/lock-30min-before', (req, res) => {
     schedule30MinBeforeLocks();
   }
   io.emit('lock-30min-before:updated', { enabled: !!enabled });
+  res.json({ ok: true, enabled: !!enabled });
+});
+
+app.get('/api/settings/bonus-lock-30min-before', (req, res) => {
+  res.json({ enabled: db.getSetting('bonus_lock_30min_before') === '1' });
+});
+app.post('/api/admin/bonus-lock-30min-before', (req, res) => {
+  const { enabled } = req.body;
+  db.setSetting('bonus_lock_30min_before', enabled ? '1' : '0');
+  if (enabled) {
+    lockBonusTracksDue();
+    scheduleBonusLocks();
+  }
+  io.emit('bonus-lock-30min-before:updated', { enabled: !!enabled });
   res.json({ ok: true, enabled: !!enabled });
 });
 
